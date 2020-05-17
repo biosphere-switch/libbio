@@ -19,7 +19,7 @@ DEF_SVC _ZN3bio3svc11SetHeapSizeERPvy
 	ret
 END_DEF_SVC
 
-DEF_SVC svcSetMemoryPermission
+DEF_SVC _ZN3bio3svc19SetMemoryPermissionEPvyj
 	svc 0x2
 	ret
 END_DEF_SVC

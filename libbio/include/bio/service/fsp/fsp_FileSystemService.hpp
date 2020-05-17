@@ -15,19 +15,17 @@ namespace bio::service::fsp {
                 return "fsp-srv";
             }
 
-            /*
-            inline Result PostInitialize() override {
+            inline Result PostInitialize() {
                 return this->SetCurrentProcess();
             }
-            */
 
         public:
             inline Result SetCurrentProcess() {
                 return this->session.SendSyncRequest<1>(ipc::client::InProcessId(), ipc::client::In<u64>(0));
             }
 
-            inline Result OpenSdCardFileSystem(ipc::client::Session &out_fs) {
-                return this->session.SendSyncRequest<18>(ipc::client::OutSession<0>(out_fs));
+            inline Result OpenSdCardFileSystem(mem::SharedObject<FileSystem> &out_fs) {
+                return this->session.SendSyncRequest<18>(ipc::client::OutSessionObject<0, FileSystem>(out_fs));
             }
 
     };

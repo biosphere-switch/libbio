@@ -1,6 +1,8 @@
 
 #pragma once
 #include <bio/ipc/client/client_RequestTypes.hpp>
+#include <bio/mem/mem_SharedObject.hpp>
+#include <bio/util/util_Concepts.hpp>
 
 namespace bio::ipc::client {
 
@@ -8,9 +10,14 @@ namespace bio::ipc::client {
 
     namespace impl {
 
+        template<typename T>
+        concept IsRequestArgument = requires(T t, RequestData &rq, RequestState state) {
+            { t.Process(rq, state) } -> util::SameAs<void>;
+        };
+
         template<typename Arg>
         inline void ProcessRequestArgument(Arg &arg, RequestData &rq, RequestState state) {
-            // static_assert(std::is_base_of_v<RequestArgument, Arg>, "Invalid request argument");
+            static_assert(IsRequestArgument<Arg>, "Invalid request argument");
             arg.Process(rq, state);
         }
 
@@ -126,6 +133,11 @@ namespace bio::ipc::client {
 
     };
     
+    template<typename T>
+    concept IsSessionObject = requires(T t) {
+        { t.GetSession() } -> util::SameAs<Session&>;
+    };
+
     // Service
 
     class Service : public SessionObject {
@@ -151,6 +163,12 @@ namespace bio::ipc::client {
 
     };
 
+    template<typename T>
+    concept IsService = IsSessionObject<T> && requires(T) {
+        { T::IsDomain } -> util::SameAs<const bool>;
+        { T::GetName() } -> util::SameAs<const char*>;
+    };
+
     // Named port (like sm:)
 
     class NamedPort : public SessionObject {
@@ -162,7 +180,7 @@ namespace bio::ipc::client {
 
         /*
         public:
-            static inline constexpr const char Name[] = "sm:";
+            static inline constexpr const char *Name = "sm:";
 
             inline Result PostInitialize(Session &session) override {
                 // Optional
@@ -171,25 +189,24 @@ namespace bio::ipc::client {
 
     };
 
+    template<typename T>
+    concept IsNamedPort = IsSessionObject<T> && requires(T) {
+        { T::Name } -> util::SameAs<const char* const>;
+    };
+
+    template<typename T>
+    concept IsValidSessionType = IsService<T> || IsNamedPort<T>;
+
+    template<typename T>
+    concept HasPostInitialize = IsValidSessionType<T> && requires(T t) {
+        { t.PostInitialize() } -> util::SameAs<Result>;
+    };
+
     namespace impl {
 
-        /*
-        template<typename S>
-        inline constexpr bool IsValidCreatableSession() {
-            if constexpr(std::is_base_of_v<NamedPort, S>) {
-                return true;
-            }
-            if constexpr(std::is_base_of_v<Service, S>) {
-                return true;
-            }
-            return false;
-        }
-        */
-
-        /*
         template<typename C>
         inline Result CreateNamedPortSession(Session &out_session) {
-            // static_assert(std::is_base_of_v<NamedPort, C>, "Invalid input");
+            static_assert(IsNamedPort<C>, "Invalid input");
             u32 out_handle;
             auto rc = svc::ConnectToNamedPort(out_handle, C::Name);
             if(rc.IsSuccess()) {
@@ -197,12 +214,10 @@ namespace bio::ipc::client {
             }
             return rc;
         }
-        */
 
         // Note: this is implemented in sm namespace
         // Ignoring "not defined inline function" warning (it's defined elsewhere in the end)
 
-        /*
         #pragma clang diagnostic push
         #pragma clang diagnostic ignored "-Wundefined-inline"
 
@@ -210,39 +225,36 @@ namespace bio::ipc::client {
         inline Result CreateServiceSession(Session &out_session);
 
         #pragma clang diagnostic pop
-        */
 
-        /*
         template<typename S>
         inline Result CreateSession(Session &out_session) { 
-            static_assert(IsValidCreatableSession<S>(), "Invalid input");
-            if constexpr(std::is_base_of_v<NamedPort, S>) {
+            static_assert(IsValidSessionType<S>, "Invalid input");
+            if constexpr(IsNamedPort<S>) {
                 return impl::CreateNamedPortSession<S>(out_session);
             }
-            else if constexpr(std::is_base_of_v<Service, S>) {
+            else if constexpr(IsService<S>) {
                 return impl::CreateServiceSession<S>(out_session);
             }
             else {
                 return result::ResultInvalidInput;
             }
         }
-        */
 
     }
     
-    /*
     template<typename S>
-    inline Result CreateSessionObject(SharedPointer<S> &out_obj) {
-        static_assert(std::is_base_of_v<SessionObject, S>, "Invalid input");
+    inline Result CreateSessionObject(mem::SharedObject<S> &out_obj) {
+        static_assert(IsValidSessionType<S>, "Invalid input");
         Session session;
-        BIO_R_TRY(impl::CreateSession<S>(session));
+        RES_TRY(impl::CreateSession<S>(session));
         
-        auto session_obj = std::make_shared<S>(session);
-        BIO_R_TRY(session_obj->PostInitialize());
+        auto session_obj = mem::NewShared<S>(session);
+        if constexpr(HasPostInitialize<S>) {
+            RES_TRY(session_obj->PostInitialize());
+        }
         
-        out_obj = std::move(session_obj);
+        out_obj = util::Move(session_obj);
         return ResultSuccess;
     }
-    */
 
 }

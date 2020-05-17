@@ -5,33 +5,20 @@
 
 namespace bio::dyn {
 
-    inline constexpr u64 HashString(const char *name) {
-        u64 h = 0;
-        u64 g = 0;
-        while(*name) {
-            h = (h << 4) + static_cast<u8>(*name++);
-            if((g = (h & 0xf0000000)) != 0) {
-                h ^= g >> 24;
-            }
-            h &= ~g;
-        }
-        return h;
-    }
-
     inline void RelocateModuleBase(void *base, elf::Dyn *dyn) {
         auto base8 = reinterpret_cast<u8*>(base);
         u64 rela_off = 0;
-        auto res = dyn->FindValue(elf::Tag::RelaOffset, rela_off);
-        if(res) {
+        auto rc = dyn->FindValue(elf::Tag::RelaOffset, rela_off);
+        if(rc.IsSuccess()) {
             u64 rela_size = 0;
-            res = dyn->FindValue(elf::Tag::RelaSize, rela_size);
-            if(res) {
+            rc = dyn->FindValue(elf::Tag::RelaSize, rela_size);
+            if(rc.IsSuccess()) {
                 u64 rela_ent = 0;
-                res = dyn->FindValue(elf::Tag::RelaEntrySize, rela_ent);
-                if(res) {
+                rc = dyn->FindValue(elf::Tag::RelaEntrySize, rela_ent);
+                if(rc.IsSuccess()) {
                     u64 rela_count = 0;
-                    res = dyn->FindValue(elf::Tag::RelaCount, rela_count);
-                    if(res) {
+                    rc = dyn->FindValue(elf::Tag::RelaCount, rela_count);
+                    if(rc.IsSuccess()) {
                         if(rela_size == (rela_ent * rela_count)) {
                             auto rela_base = reinterpret_cast<elf::Rela*>(base8 + rela_off);
                             for(u64 i = 0; i < rela_count; i++) {

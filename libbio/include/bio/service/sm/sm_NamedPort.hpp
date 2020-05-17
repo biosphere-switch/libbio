@@ -46,13 +46,11 @@ namespace bio::service::sm {
         public:
             using NamedPort::NamedPort;
 
-            static inline constexpr const char Name[] = "sm:";
+            static inline constexpr const char *Name = "sm:";
 
-            /*
-            virtual Result PostInitialize() override {
+            inline Result PostInitialize() {
                 return this->Initialize();
             }
-            */
 
         public:
             inline Result Initialize() {
@@ -72,21 +70,20 @@ namespace bio::service::sm {
 
     };
 
-    // BIO_SERVICE_DECLARE_GLOBAL_SESSION(UserNamedPort);
+    BIO_SERVICE_DECLARE_GLOBAL_SESSION(UserNamedPort);
 
 }
 
-namespace ipc::client::impl {
+namespace bio::ipc::client::impl {
 
     // Service creation implementation
 
-    /*
     template<typename S>
     inline Result CreateServiceSession(Session &out_session) {
-        static_assert(std::is_base_of_v<Service, S>, "Invalid input");
+        static_assert(ipc::client::IsService<S>, "Invalid input");
         if(service::sm::IsInitialized()) {
             const auto name = S::GetName();
-            BIO_SVC_LOG_OUTPUT("sm - Name: '%s'", name);
+            DEBUG_LOG_FMT("sm - Name: '%s'", name);
             const auto srv_name = service::sm::ServiceName::Encode(name);
             Session tmp_session;
             u32 srv_handle;
@@ -104,6 +101,5 @@ namespace ipc::client::impl {
         }
         return 0xdead;
     }
-    */
 
 }

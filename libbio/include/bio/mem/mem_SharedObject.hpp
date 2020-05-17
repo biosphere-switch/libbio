@@ -3,13 +3,14 @@
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/util/util_Misc.hpp>
 
+#include <bio/svc/svc_Impl.hpp>
+
 namespace bio::mem {
 
     template<typename T>
     class SharedObject {
 
         private:
-
             class RefCount {
 
                 private:
@@ -32,7 +33,6 @@ namespace bio::mem {
 
                     template<class U>
                     void Acquire(U *p) {
-                        DEBUG_LOG_PTR("Acquire", p);
                         if(p != nullptr) {
                             if(this->pn == nullptr) {
                                 this->pn = mem::AllocateSingle<i64>();
@@ -41,19 +41,26 @@ namespace bio::mem {
                             else {
                                 ++(*this->pn);
                             }
+                            u32 val = 0;
+                            if(this->pn != nullptr) {
+                                val = *this->pn;
+                            }
                         }
                     }
 
                     template<class U>
                     void Release(U *p) {
-                        DEBUG_LOG_PTR("Release", p);
                         if(this->pn != nullptr) {
                             --(*this->pn);
                             if(*this->pn == 0) {
                                 mem::Delete(p);
                                 mem::Free(this->pn);
+                                this->pn = nullptr;
                             }
-                            this->pn = nullptr;
+                            u32 val = 0;
+                            if(this->pn != nullptr) {
+                                val = *this->pn;
+                            }
                         }
                     }
 
@@ -71,7 +78,7 @@ namespace bio::mem {
         public:
             SharedObject() : px(nullptr), pn() {}
 
-            explicit SharedObject(T *p) : pn() {
+            SharedObject(T *p) : pn() {
                 this->Acquire(p);
             }
 
@@ -86,8 +93,13 @@ namespace bio::mem {
                 this->Acquire(reinterpret_cast<T*>(ptr.px));
             }
 
+            SharedObject(const SharedObject &ptr) : pn(ptr.pn) {
+                // Assert ptr.px == nullptr || ptr.pn.UseCount() != 0
+                this->Acquire(ptr.px);
+            }
+
             SharedObject &operator=(SharedObject ptr) {
-                // Swap
+                this->Swap(ptr);
                 return *this;
             }
 
@@ -95,15 +107,19 @@ namespace bio::mem {
                 this->Release();
             }
 
-            void Release() {
-                this->pn.Release(this->px);
-                this->px = nullptr;
+            void Reset() {
+                this->Release();
             }
 
-            void Release(T *p) {
+            void Reset(T *p) {
                 // Assert p == nullptr || p != this->px
                 this->Release();
                 this->Acquire(p);
+            }
+
+            void Release() {
+                this->pn.Release(this->px);
+                this->px = nullptr;
             }
 
             void Swap(SharedObject &ptr) {
@@ -124,7 +140,7 @@ namespace bio::mem {
             }
 
             T &operator*() const {
-                return *this->px;
+                return *this->Get();
             }
 
             T *operator->() const {
@@ -137,10 +153,20 @@ namespace bio::mem {
 
     };
 
+    template<class T, class U>
+    inline bool operator==(const SharedObject<T> &l, const SharedObject<U> &r) {
+        return (l.Get() == r.Get());
+    }
+
+    template<class T, class U>
+    inline bool operator!=(const SharedObject<T> &l, const SharedObject<U> &r) {
+        return (l.Get() != r.Get());
+    }
+
     template<typename T, typename ...Args>
     inline SharedObject<T> NewShared(Args &&...args) {
         auto obj = New<T>(args...);
-        return SharedObject<T>(obj);
+        return util::Move(SharedObject<T>(obj));
     }
 
 }

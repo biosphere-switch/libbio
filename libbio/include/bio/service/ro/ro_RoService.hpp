@@ -15,11 +15,9 @@ namespace bio::service::ro {
                 return "ldr:ro";
             }
 
-            /*
-            virtual Result PostInitialize() override {
+            inline Result PostInitialize() {
                 return this->Initialize();
             }
-            */
 
         public:
             inline Result LoadNro(void *nro_address, u64 nro_size, void *bss_address, u64 bss_size, u64& out_nro_addr) {

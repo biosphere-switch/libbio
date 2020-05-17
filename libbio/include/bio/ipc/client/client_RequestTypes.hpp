@@ -551,7 +551,7 @@ namespace bio::ipc::client {
 
             auto rc = svc::SendSyncRequest(handle);
             if(rc.IsSuccess()) {
-                RequestData rq = {};
+                auto rq = mem::Zeroed<RequestData>();
 
                 impl::OffsetCalculator off;
                 off.IncrementOffset<u32>(); // u32 magic (SFCO)

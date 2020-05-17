@@ -279,14 +279,13 @@ namespace bio::ipc::client {
 
     };
 
-    /*
     template<u32 Index, typename S>
     struct OutSessionObject : public RequestArgument {
-        static_assert(std::is_base_of_v<SessionObject, S>, "Invalid session object");
+        static_assert(IsSessionObject<S>, "Invalid session object");
 
-        SharedPointer<S> &session_obj;
+        mem::SharedObject<S> &session_obj;
 
-        constexpr OutSessionObject(SharedPointer<S> &session_obj_ref) : session_obj(session_obj_ref) {}
+        constexpr OutSessionObject(mem::SharedObject<S> &session_obj_ref) : session_obj(session_obj_ref) {}
 
         inline constexpr void Process(RequestData &rq, RequestState state) {
             switch(state) {
@@ -295,14 +294,14 @@ namespace bio::ipc::client {
                         u32 obj_id = InvalidObjectId;
                         if(rq.GetOutObjectId<Index>(obj_id)) {
                             auto session = Session::CreateDomainFromParent(rq.session_copy, obj_id);
-                            session_obj = std::move(std::make_shared<S>(session));
+                            session_obj = util::Move(mem::NewShared<S>(session));
                         }
                     }
                     else {
                         u32 handle = InvalidHandle;
                         if(rq.GetOutHandle<Index>(handle)) {
                             auto session = Session::CreateFromHandle(handle);
-                            session_obj = std::move(std::make_shared<S>(session));
+                            session_obj = util::Move(mem::NewShared<S>(session));
                         }
                     }
                     break;
@@ -313,7 +312,6 @@ namespace bio::ipc::client {
         }
 
     };
-    */
 
     struct OutBuffer : public RequestArgument {
     

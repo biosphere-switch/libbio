@@ -19,6 +19,7 @@ namespace bio::svc {
     };
 
     Result SetHeapSize(void *&out_addr, u64 size); // 0x01
+    Result SetMemoryPermission(void *addr, u64 size, u32 perm); // 0x02
     Result QueryMemory(MemoryInfo &out_info, u32 &out_page_info, u64 address); // 0x06
     void __attribute__((noreturn)) ExitProcess(); // 0x07
     Result CloseHandle(Handle handle); // 0x16
@@ -29,16 +30,12 @@ namespace bio::svc {
 
 }
 
-#define DEBUG_LOG(msg) svc::OutputDebugString(msg, __builtin_strlen(msg))
-#define DEBUG_PTR(ptr) svc::OutputDebugString(reinterpret_cast<const char*>(ptr), 0)
-#define DEBUG_NUM(num) svc::OutputDebugString(reinterpret_cast<const char*>(static_cast<u64>(num)), 0)
+#include <bio/util/util_String.hpp>
 
-#define DEBUG_LOG_PTR(msg, ptr) ({ \
-    DEBUG_LOG(msg); \
-    DEBUG_PTR(ptr); \
-})
-
-#define DEBUG_LOG_NUM(msg, num) ({ \
-    DEBUG_LOG(msg); \
-    DEBUG_NUM(num); \
+#define DEBUG_LOG(msg) ::bio::svc::OutputDebugString(msg, __builtin_strlen(msg))
+#define DEBUG_LOG_FMT(fmt, ...) ({ \
+    char msg[0x400]; \
+    ::bio::mem::ZeroArray(msg); \
+    ::bio::util::SPrintf(msg, fmt, ##__VA_ARGS__); \
+    ::bio::svc::OutputDebugString(msg, 0x400); \
 })

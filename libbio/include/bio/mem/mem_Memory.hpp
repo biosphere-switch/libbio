@@ -20,8 +20,7 @@ inline void operator delete[](void*, void*) {}
 
 namespace bio::mem {
 
-	Result Initialize(u64 heap_size);
-	Result InitializeWith(void *address, u64 size);
+	void Initialize(void *address, u64 size);
 
 	void *AllocateAligned(u64 alignment, u64 size);
 	void Free(void *ptr);

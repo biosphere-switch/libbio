@@ -106,9 +106,21 @@ namespace bio {
     } \
 })
 
+#define RES_TRY_EXCEPT(expr, except, ...) ({ \
+    auto _tmp_rc = static_cast<Result>(expr); \
+    auto _tmp_expect = static_cast<Result>(expr); \
+    if(_tmp_rc.GetValue() != except.GetValue()) { \
+        if(_tmp_rc.IsFailure()) { \
+            return _tmp_rc; \
+        } \
+    } \
+})
+
 #define RET_UNLESS(expr, ret) ({ \
     auto _tmp_ret = (ret); \
     if(!(expr)) { \
         return _tmp_ret; \
     } \
 })
+
+#define RET_IF(expr, ret) RET_UNLESS(!(expr), ret)

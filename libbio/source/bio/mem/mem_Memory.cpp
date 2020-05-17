@@ -5,13 +5,11 @@ namespace bio::mem {
 
     namespace {
 
-        static u64 g_BaseAddress = 0;
-        static u64 g_TotalSize = 0;
-        static u64 g_CurrentOffset = 0;
+        u64 g_BaseAddress = 0;
+        u64 g_TotalSize = 0;
+        u64 g_CurrentOffset = 0;
 
-        constexpr u64 DefaultBlockSize = 0x1000;
-
-        static inline constexpr u64 ComputePadding(u64 base_address, u64 alignment) {
+        inline constexpr u64 ComputePadding(u64 base_address, u64 alignment) {
             const auto multiplier = (base_address / alignment) + 1;
             const auto aligned_address = multiplier * alignment;
             return aligned_address - base_address;
@@ -19,20 +17,10 @@ namespace bio::mem {
 
     }
 
-    Result Initialize(u64 heap_size) {
-        void *address = nullptr;
-        RES_TRY(svc::SetHeapSize(address, heap_size));
-        RES_TRY(InitializeWith(address, heap_size));
-
-        return ResultSuccess;
-    }
-
-    Result InitializeWith(void *address, u64 size) {
+    void Initialize(void *address, u64 size) {
         g_BaseAddress = reinterpret_cast<u64>(address);
         g_TotalSize = size;
         g_CurrentOffset = 0;
-
-        return ResultSuccess;
     }
 
     void *AllocateAligned(u64 alignment, u64 size) {
