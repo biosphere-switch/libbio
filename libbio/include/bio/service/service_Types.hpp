@@ -1,6 +1,6 @@
 
 #pragma once
-#include <bio/ipc/client/client_Request.hpp>
+#include <bio/ipc/client/client_SessionCommandArguments.hpp>
 
 namespace bio::service {
 
@@ -20,19 +20,29 @@ namespace bio::service::ns { \
 }
 
 #define BIO_SERVICE_DECLARE_GLOBAL_SESSION(type) \
-    extern mem::SharedObject<type> _BIO_GLOBAL_SESSION_NAME(type); \
+    extern ::bio::mem::SharedObject<type> _BIO_GLOBAL_SESSION_NAME(type); \
     static inline bool IsInitialized() { \
         return _BIO_GLOBAL_SESSION_NAME(type).IsValid(); \
     } \
-    static inline Result Initialize() { \
+    static inline ::bio::Result Initialize() { \
         if(IsInitialized()) { \
             return ResultSuccess; \
         } \
-        return ipc::client::CreateSessionObject<type>(_BIO_GLOBAL_SESSION_NAME(type)); \
+        return ::bio::ipc::client::CreateSessionObject<type>(_BIO_GLOBAL_SESSION_NAME(type)); \
     } \
-    static inline void InitializeWith(mem::SharedObject<type> session) { \
+    static inline void InitializeWith(::bio::mem::SharedObject<type> session) { \
         _BIO_GLOBAL_SESSION_NAME(type) = session; \
     } \
     static inline void Finalize() { \
         _BIO_GLOBAL_SESSION_NAME(type).Reset(); \
     }
+
+// Use a service, and close it after using it (if the service wasn't initialized before this macro)
+#define BIO_SERVICE_DO_WITH(ns, rc_var, ...) ({ \
+    const bool _already_init = ::bio::service::ns::IsInitialized(); \
+    const auto rc_var = ::bio::service::ns::Initialize(); \
+    __VA_ARGS__ \
+    if(!_already_init) { \
+        ::bio::service::ns::Finalize(); \
+    } \
+})

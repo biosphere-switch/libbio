@@ -37,9 +37,9 @@ namespace bio::service::sm {
 
         private:
             inline bool CheckCanAccessServices() {
-                ServiceName empty_service = {};
-                u32 dummy_handle;
-                auto rc = this->GetService(empty_service, dummy_handle);
+                ServiceName empty_srv_name = {};
+                ipc::client::Session dummy_srv;
+                auto rc = this->GetService(empty_srv_name, dummy_srv);
                 return rc != 0x415; // check that the error isn't "not initialized"
             }
 
@@ -57,15 +57,15 @@ namespace bio::service::sm {
                 if(this->CheckCanAccessServices()) {
                     return ResultSuccess;
                 }
-                return this->session.SendSyncRequest<0>(ipc::client::InProcessId(), ipc::client::In<u64>(0), ipc::client::In<u64>(0), ipc::client::In<u64>(0));
+                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(), ipc::client::In<u64>(0), ipc::client::In<u64>(0));
             }
 
-            inline Result GetService(ServiceName name, u32 &out_handle) {
-                return this->session.SendSyncRequest<1>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutHandle<0>(out_handle));
+            inline Result GetService(ServiceName name, ipc::client::Session &out_session) {
+                return this->session.SendRequestCommand<1>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutSession<0>(out_session));
             }
 
             inline Result AtmosphereHasService(ServiceName name, bool &out_has) {
-                return this->session.SendSyncRequest<65100>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<bool>(out_has));
+                return this->session.SendRequestCommand<65100>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<bool>(out_has));
             }
 
     };
@@ -86,10 +86,8 @@ namespace bio::ipc::client::impl {
             DEBUG_LOG_FMT("sm - Name: '%s'", name);
             const auto srv_name = service::sm::ServiceName::Encode(name);
             Session tmp_session;
-            u32 srv_handle;
-            auto rc = service::sm::UserNamedPortSession->GetService(srv_name, srv_handle);
+            auto rc = service::sm::UserNamedPortSession->GetService(srv_name, tmp_session);
             if(rc.IsSuccess()) {
-                tmp_session = Session::CreateFromHandle(srv_handle);
                 if(S::IsDomain) {
                     rc = tmp_session.ConvertToDomain();
                 }

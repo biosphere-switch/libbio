@@ -19,7 +19,7 @@ namespace bio::os {
 
     void *GetThreadLocalStorageValue();
 
-    template<typename T>
+    template<typename T = void>
     inline T *GetThreadLocalStorage() {
         return reinterpret_cast<T*>(GetThreadLocalStorageValue());
     }

@@ -21,11 +21,11 @@ namespace bio::service::fsp {
 
         public:
             inline Result SetCurrentProcess() {
-                return this->session.SendSyncRequest<1>(ipc::client::InProcessId(), ipc::client::In<u64>(0));
+                return this->session.SendRequestCommand<1>(ipc::client::InProcessId());
             }
 
             inline Result OpenSdCardFileSystem(mem::SharedObject<FileSystem> &out_fs) {
-                return this->session.SendSyncRequest<18>(ipc::client::OutSessionObject<0, FileSystem>(out_fs));
+                return this->session.SendRequestCommand<18>(ipc::client::OutSessionObject<0, FileSystem>(out_fs));
             }
 
     };

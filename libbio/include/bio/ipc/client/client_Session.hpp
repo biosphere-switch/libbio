@@ -1,24 +1,22 @@
 
 #pragma once
-#include <bio/ipc/client/client_RequestTypes.hpp>
+#include <bio/ipc/client/client_CommandArguments.hpp>
 #include <bio/mem/mem_SharedObject.hpp>
 #include <bio/util/util_Concepts.hpp>
 
 namespace bio::ipc::client {
 
-    struct RequestArgument;
-
     namespace impl {
 
         template<typename T>
-        concept IsRequestArgument = requires(T t, RequestData &rq, RequestState state) {
-            { t.Process(rq, state) } -> util::SameAs<void>;
+        concept IsCommandArgument = requires(T t, CommandContext &ctx, CommandState state) {
+            { t.Process(ctx, state) } -> util::SameAs<void>;
         };
 
         template<typename Arg>
-        inline void ProcessRequestArgument(Arg &arg, RequestData &rq, RequestState state) {
-            static_assert(IsRequestArgument<Arg>, "Invalid request argument");
-            arg.Process(rq, state);
+        inline void ProcessCommandArgument(Arg &arg, CommandContext &ctx, CommandState state) {
+            static_assert(IsCommandArgument<Arg>, "Invalid command argument");
+            arg.Process(ctx, state);
         }
 
     }
@@ -27,59 +25,64 @@ namespace bio::ipc::client {
 
         using SessionBase::SessionBase;
 
-        template<u32 CommandId, typename ...Args>
-        inline Result SendSyncRequest(Args &&...args) {
-            auto rq = mem::Zeroed<RequestData>();
-            rq.session_copy = *this;
+        template<u32 RequestId, typename ...Args>
+        inline Result SendRequestCommand(Args &&...args) {
+            auto ctx = mem::Zeroed<CommandContext>();
+            ctx.session_copy = *this;
 
-            // Calculate in raw data size
-            impl::OffsetCalculator off;
-            auto offset_inmagic = off.GetNextOffset<u32>();
-            off.IncrementOffset<u32>(); // u32 version
-            auto offset_cmdid = off.GetNextOffset<u32>();
-            off.IncrementOffset<u32>(); // u32 token
-            rq.in_raw_size = off.GetCurrentOffset();
-
-            (impl::ProcessRequestArgument(args, rq, RequestState::BeforeHeaderPreparation), ...);
-            impl::PrepareCommandHeader(rq);
-
-            // Fill in raw data now
-            off = impl::OffsetCalculator(rq.in_raw);
-            off.SetByOffset<u32>(offset_inmagic, SFCI);
-            off.SetByOffset<u32>(offset_cmdid, CommandId);
+            (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            (impl::ProcessRequestArgument(args, rq, RequestState::BeforeRequest), ...);
-            auto rc = svc::SendSyncRequest(handle);
-            if(rc.IsSuccess()) {
-                // Calculate out raw data size
-                off = impl::OffsetCalculator();
-                off.IncrementOffset<u32>(); // u32 magic (SFCO)
-                off.IncrementOffset<u32>(); // u32 version
-                auto offset_rc = off.GetNextOffset<u32>();
-                off.IncrementOffset<u32>(); // u32 token
-                rq.out_raw_size = off.GetCurrentOffset();
+            InitializeRequestCommand(ctx, RequestId);
+            
+            (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
-                (impl::ProcessRequestArgument(args, rq, RequestState::AfterRequest), ...);
-                impl::ProcessResponse(rq);
+            RES_TRY(svc::SendSyncRequest(handle));
 
-                // Retrieve out raw data now (if the request succeeded)
-                off = impl::OffsetCalculator(rq.out_raw);
-                rc = off.GetByOffset<u32>(offset_rc);
-                if(rc.IsSuccess()) {
-                    (impl::ProcessRequestArgument(args, rq, RequestState::AfterResponseProcess), ...);
-                }
-            }
-            return rc;
+            (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
+            
+            RES_TRY(ParseRequestCommandResponse(ctx));
+
+            (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
+
+            return ResultSuccess;
+        }
+
+        template<u32 RequestId, typename ...Args>
+        inline Result SendControlCommand(Args &&...args) {
+            auto ctx = mem::Zeroed<CommandContext>();
+            ctx.session_copy = *this;
+
+            (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
+            
+            InitializeControlCommand(ctx, RequestId);
+            
+            (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
+
+            RES_TRY(svc::SendSyncRequest(handle));
+
+            (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
+            
+            RES_TRY(ParseControlCommandResponse(ctx));
+
+            (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
+
+            return ResultSuccess;
         }
 
         inline Result ConvertToDomain() {
-            if(!this->IsDomain()) {
-                return impl::ConvertObjectToDomain(this->handle, this->object_id);
-            }
-            return 0;
+            return this->SendControlCommand<0>(Out<u32>(this->object_id));
+        }
+
+        inline void SetPointerBufferSize() {
+            this->QueryPointerBufferSize(this->pointer_buffer_size);
+        }
+
+        inline Result QueryPointerBufferSize(u16 &out_size) {
+            return this->SendControlCommand<3>(Out<u16>(out_size));
         }
 
         inline void Close() {
+            /*
             if(this->IsValid()) {
                 if(this->IsDomain()) {
                     impl::CloseDomainObject(this->handle, this->object_id);
@@ -92,16 +95,15 @@ namespace bio::ipc::client {
                     svc::CloseHandle(this->handle);
                 }
             }
+            */
         }
 
-        static inline Session CreateFromHandle(u32 handle) {
-            u16 ptr_buf_size = 0;
-            impl::QueryPointerBufferSize(handle, ptr_buf_size);
-            return { handle, ptr_buf_size };
+        static inline constexpr Session CreateFromHandle(u32 handle) {
+            return { handle };
         }
 
         static inline constexpr Session CreateDomainFromParent(SessionBase parent, u32 object_id) {
-            return { parent.GetHandle(), parent.GetPointerBufferSize(), object_id };
+            return { parent.GetHandle(), object_id };
         }
 
     };
@@ -112,24 +114,15 @@ namespace bio::ipc::client {
             Session session;
 
         public:
-            SessionObject(Session session) : session(session) {
-                // BIO_SVC_LOG_OUTPUT("Opened session of handle 0x%X", session.handle);
-            }
+            SessionObject(Session session) : session(session) {}
 
             ~SessionObject() {
-                // BIO_SVC_LOG_OUTPUT("Closing session of handle 0x%X", this->session.handle);
                 this->session.Close();
             }
 
             inline Session &GetSession() {
                 return this->session;
             }
-
-            /*
-            virtual Result PostInitialize() {
-                return ResultSuccess;
-            }
-            */
 
     };
     

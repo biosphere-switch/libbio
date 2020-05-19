@@ -18,8 +18,8 @@ namespace bio::ipc::client {
         u16 pointer_buffer_size;
 
         constexpr SessionBase() : handle(InvalidHandle), object_id(InvalidObjectId), owns_handle(false), pointer_buffer_size(0) {}
-        constexpr SessionBase(u32 handle, u16 ptr_buf_size) : handle(handle), object_id(InvalidObjectId), owns_handle(true), pointer_buffer_size(ptr_buf_size) {}
-        constexpr SessionBase(u32 handle, u16 ptr_buf_size, u32 object_id) : handle(handle), object_id(object_id), owns_handle(false), pointer_buffer_size(ptr_buf_size) {}
+        constexpr SessionBase(u32 handle) : handle(handle), object_id(InvalidObjectId), owns_handle(true), pointer_buffer_size(0) {}
+        constexpr SessionBase(u32 handle, u32 object_id) : handle(handle), object_id(object_id), owns_handle(false), pointer_buffer_size(0) {}
 
         inline constexpr u32 GetHandle() {
             return this->handle;

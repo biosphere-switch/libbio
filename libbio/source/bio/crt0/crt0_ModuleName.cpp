@@ -7,6 +7,6 @@ namespace bio::crt0 {
 
     __attribute__((weak))
     __attribute__((section(".module_name")))
-    volatile auto g_ModuleName = CRT0_MAKE_MODULE_NAME("libbio");
+    volatile auto g_ModuleName = BIO_CRT0_MAKE_MODULE_NAME("libbio");
 
 }

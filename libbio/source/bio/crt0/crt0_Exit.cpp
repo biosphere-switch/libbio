@@ -1,6 +1,7 @@
 #include <bio/crt0/crt0_Exit.hpp>
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/svc/svc_Impl.hpp>
+#include <bio/util/util_Array.hpp>
 
 namespace bio::crt0 {
 
@@ -11,19 +12,22 @@ namespace bio::crt0 {
             void *args;
 
             inline void Run() {
-                (this->fn)(this->args);
+                if(this->fn != nullptr) {
+                    (this->fn)(this->args);
+                }
             }
 
         };
 
         constexpr u32 MaxExitEntries = 16;
 
-        ExitEntry g_ExitEntryList[MaxExitEntries];
-        u32 g_ExitEntryCount;
+        util::SizedArray<ExitEntry, MaxExitEntries> g_ExitEntries;
 
         void CallAtExit() {
-            for(u32 i = 0; i < g_ExitEntryCount; i++) {
-                g_ExitEntryList[i].Run();
+            while(g_ExitEntries.Any()) {
+                auto &entry = g_ExitEntries.Back();
+                entry.Run();
+                g_ExitEntries.Pop();
             }
         }
 
@@ -32,11 +36,8 @@ namespace bio::crt0 {
     extern "C" {
 
         i32 __cxa_atexit(void (*fn)(void*), void *args, void *dso_handle) {
-            if(g_ExitEntryCount < MaxExitEntries) {
-                g_ExitEntryList[g_ExitEntryCount].fn = fn;
-                g_ExitEntryList[g_ExitEntryCount].args = args;
-                g_ExitEntryCount++;
-            }
+            // TODO: make use of dso handle?
+            g_ExitEntries.Push({ fn, args });
             return 0;
         }
         
@@ -47,7 +48,6 @@ namespace bio::crt0 {
     void Exit(i32 error_code) {
         // Dispose executing atexit calls
         // CallAtExit();
-        DEBUG_LOG_FMT("Count: %d", g_ExitEntryCount);
 
         // g_ExitFunction must have a valid value, which is set by the CRT0
         g_ExitFunction(error_code);

@@ -48,4 +48,15 @@ namespace bio::util {
 
     int FctPrintf(void (*out)(char character, void* arg), void* arg, const char* format, ...);
 
+    inline u64 Strlen(const char *str) {
+        const char *s;
+        for(s = str; *s; ++s);
+        return s - str;
+    }
+
+    inline void Strncpy(char* dst, const char* src, u64 count) {
+        u64 i = 0;
+        while(i++ != count && (*dst++ = *src++));
+    }
+
 }

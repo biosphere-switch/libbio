@@ -33,4 +33,20 @@ namespace bio::util {
         b = Move(tmp);
     }
 
+    template<typename T>
+    inline T &Min(T &a, T &b) {
+        if(a < b) {
+            return a;
+        }
+        return b;
+    }
+
+    template<typename T>
+    inline T &Max(T &a, T &b) {
+        if(a > b) {
+            return a;
+        }
+        return b;
+    }
+
 }

@@ -10,12 +10,12 @@ namespace bio::service::fsp {
             using SessionObject::SessionObject;
 
         public:
-            inline Result CreateFile(const char *path, u64 path_len, u32 flags, u64 size) {
-                return this->session.SendSyncRequest<0>(ipc::client::In<u32>(flags), ipc::client::In<u64>(size), ipc::client::InStaticBuffer(path, path_len, 0));
+            inline Result CreateFile(char *path, u64 path_len, u32 flags, u64 size) {
+                return this->session.SendRequestCommand<0>(ipc::client::In<u32>(flags), ipc::client::In<u64>(size), ipc::client::Buffer(path, path_len, ipc::client::BufferAttribute::In | ipc::client::BufferAttribute::Pointer));
             }
             
-            inline Result OpenFile(const char *path, u64 path_len, u32 flags, mem::SharedObject<File> &out_file) {
-                return this->session.SendSyncRequest<8>(ipc::client::In<u32>(flags), ipc::client::InStaticBuffer(path, path_len, 0), ipc::client::OutSessionObject<0, File>(out_file));
+            inline Result OpenFile(char *path, u64 path_len, u32 flags, mem::SharedObject<File> &out_file) {
+                return this->session.SendRequestCommand<8>(ipc::client::In<u32>(flags), ipc::client::Buffer(path, path_len, ipc::client::BufferAttribute::In | ipc::client::BufferAttribute::Pointer), ipc::client::OutSessionObject<0, File>(out_file));
             }
 
     };

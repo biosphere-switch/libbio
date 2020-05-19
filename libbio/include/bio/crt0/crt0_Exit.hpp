@@ -11,3 +11,10 @@ namespace bio::crt0 {
     void Exit(i32 error_code);
 
 }
+
+#define CRT0_RES_ASSERT(expr) ({ \
+    const auto _tmp_rc = _BIO_AS_RESULT(expr); \
+    if(_tmp_rc.IsFailure()) { \
+        ::bio::crt0::Exit(_tmp_rc.GetValue()); \
+    } \
+})
