@@ -7,6 +7,8 @@
 
 namespace bio::mem {
 
+    // Note: original implementation for this type: https://github.com/SRombauts/shared_ptr
+
     template<typename T>
     class SharedObject {
 

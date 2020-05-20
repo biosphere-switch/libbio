@@ -110,7 +110,7 @@ namespace bio::diag {
         };
 
         LogPacket *AllocatePackets(const u32 text_log_len, u32 &out_count) {
-            u64 remaining_len = text_log_len;
+            auto remaining_len = text_log_len;
             u32 packet_count = 1;
             while(remaining_len > MaxStringLength) {
                 packet_count++;
@@ -155,7 +155,7 @@ namespace bio::diag {
 
     }
 
-    Result LogImplBase(const LogMetadata &metadata) {
+    Result LogImpl(const LogMetadata &metadata) {
         BIO_SERVICE_DO_WITH(sm, _sm_rc, {
             RES_TRY(_sm_rc);
             BIO_SERVICE_DO_WITH(lm, _lm_rc, {
@@ -188,7 +188,6 @@ namespace bio::diag {
 
                     for(u32 i = 0; i < packet_count; i++) {
                         auto cur_packet = &packets[i];
-                        
                         cur_packet->header.flags |= static_cast<u8>(LogPacketFlags::LittleEndian);
                         cur_packet->header.severity = static_cast<u8>(metadata.severity);
                         cur_packet->header.verbosity = static_cast<u8>(metadata.verbosity);
@@ -198,7 +197,6 @@ namespace bio::diag {
 
                         auto log_buf = mem::Allocate<u8>(log_buf_size);
                         if(log_buf != nullptr) {
-                            // Write the packet's header.
                             auto encode_buf = EncodePayload(log_buf, cur_packet->header);
                             encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_begin);
                             encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_end);
@@ -224,11 +222,6 @@ namespace bio::diag {
                 }
             });
         });
-        return ResultSuccess;
-    }
-
-    Result LogImpl(const LogMetadata &metadata) {
-        RES_TRY(LogImplBase(metadata));
         return ResultSuccess;
     }
 

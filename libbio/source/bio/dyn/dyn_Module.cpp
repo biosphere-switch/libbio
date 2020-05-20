@@ -1,10 +1,12 @@
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/dyn/dyn_Results.hpp>
-// #include <bio/service/ro/ro_RoService.hpp>
+#include <bio/service/ro/ro_RoService.hpp>
 
 namespace bio::dyn {
 
-    constexpr u32 MaxModules = 16;
+    // TODO: switch to a dynamic array
+
+    constexpr u32 MaxModules = 8;
 
     static mem::SharedObject<Module> g_ModuleList[MaxModules];
 

@@ -22,18 +22,22 @@ namespace bio::util {
             return this->size;
         }
 
-        inline constexpr void Push(T v) {
+        inline constexpr bool Push(T v) {
             if(this->size < N) {
                 this->array[this->size] = v;
                 this->size++;
+                return true;
             }
+            return false;
         }
 
-        inline constexpr void Pop() {
+        inline constexpr bool Pop() {
             if(this->size > 0) {
                 this->size--;
-                mem::Zero(&this->array[this->size]);
+                mem::ZeroSingle(&this->array[this->size]);
+                return true;
             }
+            return false;
         }
 
         inline constexpr bool IsEmpty() {

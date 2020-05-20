@@ -5,9 +5,9 @@
 namespace bio::diag {
 
     enum class LogPacketFlags : u8 {
-        Head = (1 << 0),
-        Tail = (1 << 1),
-        LittleEndian = (1 << 2),
+        Head = BIO_BITMASK(0),
+        Tail = BIO_BITMASK(1),
+        LittleEndian = BIO_BITMASK(2),
     };
 
     struct LogPacketHeader {

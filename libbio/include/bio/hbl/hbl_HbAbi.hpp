@@ -29,11 +29,11 @@ namespace bio::hbl {
     };
 
     enum class ABIEntryFlags : u32 {
-        Mandatory = (1 << 0),
+        Mandatory = BIO_BITMASK(0),
     };
 
     enum class ABIAppletFlags : u32 {
-        ApplicationOverride = (1 << 0),
+        ApplicationOverride = BIO_BITMASK(0),
     };
 
 }

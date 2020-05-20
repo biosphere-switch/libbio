@@ -5,6 +5,8 @@ _start:
 	b _entry
 	.word __module_header - _start
 
+.section .data.mod0
+
 .global __module_header
 __module_header:
 	.ascii "MOD0"
@@ -20,9 +22,14 @@ __module_header:
 
 .global _entry
 _entry:
-	// Get aslr base address as 3rd argument
+	// Set aslr base address as 3rd argument
 	adrp x2, _start
-	// Save lr as 4th argument
+	// Set lr as 4th argument
 	mov x3, x30
-	// Execute - bio::crt0::Entry(context_args_ptr, main_thread_handle_v, aslr_base_address, exit_lr)
-	b _ZN3bio4crt05EntryEPvyS1_PFviE
+	// Set .bss start and end as 5th and 6th arguments
+	adrp x4, __bss_start
+	add x4, x4, #:lo12:__bss_start
+	adrp x5, __bss_end
+	add x5, x5, #:lo12:__bss_end
+	// Execute - bio::crt0::Entry(context_args_ptr, main_thread_handle_v, aslr_base_address, exit_lr, bss_start, bss_end)
+	b _ZN3bio4crt05EntryEPvyS1_PFviES1_S1_

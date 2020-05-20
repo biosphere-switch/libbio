@@ -9,6 +9,13 @@
 
 void Main();
 
+extern "C" {
+
+    extern void *__bss_start;
+    extern void *__bss_end;
+
+}
+
 namespace bio::crt0 {
 
     extern ExitFunction g_ExitFunction;
@@ -34,18 +41,25 @@ namespace bio::crt0 {
             }
         }
 
+        void ClearBss(void *bss_start, void *bss_end) {
+            const auto bss_size = reinterpret_cast<u64>(bss_end) - reinterpret_cast<u64>(bss_start);
+            mem::Zero(bss_start, bss_size);
+        }
+
     }
 
     __attribute__((weak))
-    void Entry(void *context_args_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction exit_lr) {
-        DEBUG_LOG("Ohayo");
+    void Entry(void *context_args_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction exit_lr, void *bss_start, void *bss_end) {
+        // Clear .bss section
+        ClearBss(bss_start, bss_end);
 
-        // relocate ourselves
+        // Relocate ourselves
         dyn::RelocateModule(aslr_base_address);
 
+        DEBUG_LOG("Ohayo");
         auto main_thread_handle = static_cast<u32>(main_thread_handle_v);
 
-        // Set exit function (svc::ExitProcess if null)
+        // Set exit function (svc::ExitProcess is used by default)
         SetExitFunction(exit_lr);
 
         void *heap_address = nullptr;

@@ -129,14 +129,14 @@ namespace bio::ipc::client {
     };
 
     enum class BufferAttribute {
-        In = (1 << 0),
-        Out = (1 << 1),
-        MapAlias = (1 << 2),
-        Pointer = (1 << 3),
-        FixedSize = (1 << 4),
-        AutoSelect = (1 << 5),
-        MapTransferAllowsNonSecure = (1 << 6),
-        MapTransferAllowsNonDevice = (1 << 7),
+        In = BIO_BITMASK(0),
+        Out = BIO_BITMASK(1),
+        MapAlias = BIO_BITMASK(2),
+        Pointer = BIO_BITMASK(3),
+        FixedSize = BIO_BITMASK(4),
+        AutoSelect = BIO_BITMASK(5),
+        MapTransferAllowsNonSecure = BIO_BITMASK(6),
+        MapTransferAllowsNonDevice = BIO_BITMASK(7),
     };
 
     inline constexpr BufferAttribute operator|(BufferAttribute lhs, BufferAttribute rhs) {
@@ -201,6 +201,8 @@ namespace bio::ipc::client {
         util::SizedArray<BufferDescriptor, MaxBufferCount> send_buffers;
         util::SizedArray<BufferDescriptor, MaxBufferCount> receive_buffers;
         util::SizedArray<BufferDescriptor, MaxBufferCount> exchange_buffers;
+
+        CommandContext(SessionBase session) : session_copy(session), in(), out(), send_statics(), receive_statics(), send_buffers(), receive_buffers(), exchange_buffers() {}
 
         template<HandleMode Mode>
         inline constexpr void AddInHandle(u32 handle) {
@@ -448,10 +450,15 @@ namespace bio::ipc::client {
 
     constexpr u32 DataInHeaderMagic = 0x49434653;
     constexpr u32 DataOutHeaderMagic = 0x4F434653;
+    constexpr i32 NoRequestId = -1;
 
-    inline void InitializeRequestCommand(CommandContext &ctx, u32 request_id) {
+    inline void InitializeRequestCommand(CommandContext &ctx, i32 request_id, DomainCommandType domain_command) {
         auto tls = os::GetThreadLocalStorage<u8>();
-        u32 data_size = 16 + sizeof(DataHeader) + ctx.in.data_size;
+        const bool has_data_header = request_id != NoRequestId;
+        u32 data_size = 16 + ctx.in.data_size;
+        if(has_data_header) {
+            data_size += sizeof(DataHeader);
+        }
         if(ctx.session_copy.IsDomain()) {
             data_size += sizeof(DomainInDataHeader) + sizeof(u32) * ctx.in.objects.GetSize();
         }
@@ -471,7 +478,7 @@ namespace bio::ipc::client {
         if(ctx.session_copy.IsDomain()) {
             auto domain_header = reinterpret_cast<DomainInDataHeader*>(data_offset);
             u32 rest_data_size = sizeof(DataHeader) + ctx.in.data_size;
-            domain_header->type = static_cast<u8>(DomainCommandType::SendMessage);
+            domain_header->type = static_cast<u8>(domain_command);
             domain_header->in_object_count = static_cast<u8>(ctx.in.objects.GetSize());
             domain_header->data_size = static_cast<u16>(rest_data_size);
             domain_header->object_id = ctx.session_copy.object_id;
@@ -482,11 +489,14 @@ namespace bio::ipc::client {
             header = reinterpret_cast<DataHeader*>(data_offset);
         }
 
-        header->magic = DataInHeaderMagic;
-        header->version = 0; // context?
-        header->value = request_id;
-        header->token = 0;
-        data_offset += sizeof(DataHeader);
+        if(has_data_header) {
+            header->magic = DataInHeaderMagic;
+            header->version = 0; // context?
+            header->value = request_id;
+            header->token = 0;
+            data_offset += sizeof(DataHeader);
+        }
+
         ctx.in.data_offset = data_offset;
     }
 

@@ -41,13 +41,17 @@ namespace bio::mem {
 		}
 	}
 
+	inline void Zero(void *ptr, u64 size) {
+		Fill(ptr, 0, size);
+	}
+	
 	template<typename T>
 	inline void ZeroCount(T *ptr, u64 count) {
 		Fill(ptr, 0, sizeof(T) * count);
 	}
 
 	template<typename T>
-	inline void Zero(T *ptr) {
+	inline void ZeroSingle(T *ptr) {
 		ZeroCount(ptr, 1);
 	}
 
@@ -59,7 +63,7 @@ namespace bio::mem {
 	template<typename T>
 	inline T Zeroed() {
 		T t;
-		Zero(&t);
+		ZeroSingle(&t);
 		return t;
 	}
 

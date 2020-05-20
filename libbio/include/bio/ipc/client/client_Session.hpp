@@ -27,12 +27,11 @@ namespace bio::ipc::client {
 
         template<u32 RequestId, typename ...Args>
         inline Result SendRequestCommand(Args &&...args) {
-            auto ctx = mem::Zeroed<CommandContext>();
-            ctx.session_copy = *this;
+            CommandContext ctx(this->GetBase());
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            InitializeRequestCommand(ctx, RequestId);
+            InitializeRequestCommand(ctx, RequestId, DomainCommandType::SendMessage);
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
@@ -49,8 +48,7 @@ namespace bio::ipc::client {
 
         template<u32 RequestId, typename ...Args>
         inline Result SendControlCommand(Args &&...args) {
-            auto ctx = mem::Zeroed<CommandContext>();
-            ctx.session_copy = *this;
+            CommandContext ctx(this->GetBase());
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
@@ -69,6 +67,10 @@ namespace bio::ipc::client {
             return ResultSuccess;
         }
 
+        inline constexpr SessionBase &GetBase() {
+            return static_cast<SessionBase&>(*this);
+        }
+
         inline Result ConvertToDomain() {
             return this->SendControlCommand<0>(Out<u32>(this->object_id));
         }
@@ -82,20 +84,27 @@ namespace bio::ipc::client {
         }
 
         inline void Close() {
-            /*
             if(this->IsValid()) {
                 if(this->IsDomain()) {
-                    impl::CloseDomainObject(this->handle, this->object_id);
+                    DEBUG_LOG_FMT("Closing as domain: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
+                    CommandContext ctx(this->GetBase());
+                    InitializeRequestCommand(ctx, NoRequestId, DomainCommandType::Close);
+                    svc::SendSyncRequest(this->handle);
                 }
                 else if(this->owns_handle) {
-                    impl::CloseNonDomainObject(this->handle);
+                    DEBUG_LOG_FMT("Closing as handle: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
+                    CommandContext ctx(this->GetBase());
+                    InitializeCloseCommand(ctx);
+                    svc::SendSyncRequest(this->handle);
                 }
-
                 if(this->owns_handle) {
+                    DEBUG_LOG_FMT("Closing handle: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     svc::CloseHandle(this->handle);
                 }
+                this->object_id = InvalidObjectId;
+                this->handle = InvalidHandle;
+                this->owns_handle = false;
             }
-            */
         }
 
         static inline constexpr Session CreateFromHandle(u32 handle) {

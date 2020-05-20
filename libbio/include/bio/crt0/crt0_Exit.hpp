@@ -9,6 +9,7 @@ namespace bio::crt0 {
     constexpr i32 SuccessExit = 0;
 
     void Exit(i32 error_code);
+    void D();
 
 }
 

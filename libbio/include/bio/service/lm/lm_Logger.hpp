@@ -5,7 +5,10 @@
 namespace bio::service::lm {
 
     enum class LogDestination : u32 {
-
+        TMA = BIO_BITMASK(0),
+        UART = BIO_BITMASK(1),
+        UARTSleeping = BIO_BITMASK(2),
+        All = 0xFFFF,
     };
 
     class Logger : public ipc::client::SessionObject {

@@ -3,6 +3,8 @@
 #include <bio/svc/svc_Impl.hpp>
 #include <bio/util/util_Array.hpp>
 
+#include <bio/diag/diag_Log.hpp>
+
 namespace bio::crt0 {
 
     namespace {
@@ -19,7 +21,9 @@ namespace bio::crt0 {
 
         };
 
-        constexpr u32 MaxExitEntries = 16;
+        // TODO: switch to a dynamic array
+
+        constexpr u32 MaxExitEntries = 32;
 
         util::SizedArray<ExitEntry, MaxExitEntries> g_ExitEntries;
 
@@ -45,9 +49,13 @@ namespace bio::crt0 {
 
     ExitFunction g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
 
+    void D() {
+        g_ExitEntries.Clear();
+    }
+
     void Exit(i32 error_code) {
         // Dispose executing atexit calls
-        // CallAtExit();
+        CallAtExit();
 
         // g_ExitFunction must have a valid value, which is set by the CRT0
         g_ExitFunction(error_code);

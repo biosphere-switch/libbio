@@ -25,6 +25,8 @@ static_assert(sizeof(i32) == 4, "i32");
 using i64 = signed long long;
 static_assert(sizeof(i64) == 8, "i64");
 
+// TODO: future aarch32 support?
+
 #ifdef __aarch64__
     #define BIO_TARGET_NAME aarch64
     #define BIO_TARGET_AARCH64
@@ -98,6 +100,8 @@ namespace bio {
     static constexpr Result ResultSuccess = result::impl::SuccessValue;
 
 }
+
+#define BIO_BITMASK(n) (1 << n)
 
 #define _BIO_AS_RESULT static_cast<::bio::Result>
 
