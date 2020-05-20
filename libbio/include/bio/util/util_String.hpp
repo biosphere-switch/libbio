@@ -59,4 +59,14 @@ namespace bio::util {
         while(i++ != count && (*dst++ = *src++));
     }
 
+    inline i32 Strcmp(const char *s1, const char *s2) {
+        while((*s1 != '\0') && (*s2 != '\0') && (*s1 == *s2)) {
+            s1++;
+            s2++;
+        }
+        return *s1 - *s2;
+    }
+
 }
+
+#define BIO_UTIL_STRLEN(v) BIO_IS_CONSTANT(v) ? __builtin_strlen(v) : ::bio::util::Strlen(v)

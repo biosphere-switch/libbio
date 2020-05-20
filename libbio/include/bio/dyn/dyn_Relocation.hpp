@@ -5,6 +5,11 @@
 
 namespace bio::dyn {
 
+    using InitFiniArrayFunction = void(*)();
+    using InitFiniArray = InitFiniArrayFunction*;
+    using InitArray = InitFiniArray;
+    using FiniArray = InitFiniArray;
+
     inline void RelocateModuleBase(void *base, elf::Dyn *dyn) {
         auto base8 = reinterpret_cast<u8*>(base);
         u64 rela_off = 0;

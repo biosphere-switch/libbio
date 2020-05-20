@@ -1,7 +1,7 @@
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_LogTypes.hpp>
-#include <bio/util/util_Misc.hpp>
-#include <bio/service/sm/sm_NamedPort.hpp>
+#include <bio/util/util_Templates.hpp>
+#include <bio/service/sm/sm_UserNamedPort.hpp>
 #include <bio/service/lm/lm_LogService.hpp>
 #include <bio/crt0/crt0_ModuleName.hpp>
 
@@ -157,9 +157,9 @@ namespace bio::diag {
 
     Result LogImpl(const LogMetadata &metadata) {
         BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-            RES_TRY(_sm_rc);
+            BIO_RES_TRY(_sm_rc);
             BIO_SERVICE_DO_WITH(lm, _lm_rc, {
-                RES_TRY(_lm_rc);
+                BIO_RES_TRY(_lm_rc);
                 u32 packet_count = 0;
                 auto packets = AllocatePackets(metadata.text_log_len, packet_count);
                 if((packets != nullptr) && (packet_count > 0)) {
@@ -184,7 +184,7 @@ namespace bio::diag {
                     }
 
                     mem::SharedObject<service::lm::Logger> logger;
-                    RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
+                    BIO_RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
 
                     for(u32 i = 0; i < packet_count; i++) {
                         auto cur_packet = &packets[i];

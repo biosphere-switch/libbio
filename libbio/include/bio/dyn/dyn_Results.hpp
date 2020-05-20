@@ -4,20 +4,21 @@
 
 namespace bio::dyn::result {
 
-    RES_DEF_MODULE(200);
+    BIO_RDEF_MODULE(200);
 
-    RES_DEF_DEFINE(InvalidInput, 1);
-    RES_DEF_DEFINE(MissingDtEntry, 2);
-    RES_DEF_DEFINE(DuplicatedDtEntry, 3);
-    RES_DEF_DEFINE(InvalidSymEnt, 4);
-    RES_DEF_DEFINE(InvalidModuleState, 5);
-    RES_DEF_DEFINE(InvalidRelocEnt, 6);
-    RES_DEF_DEFINE(InvalidRelocTableSize, 7);
-    RES_DEF_DEFINE(RelaUnsupportedSymbol, 8);
-    RES_DEF_DEFINE(UnrecognizedRelocType, 9);
-    RES_DEF_DEFINE(InvalidRelocTableType, 10);
-    RES_DEF_DEFINE(NeedsSymTab, 11);
-    RES_DEF_DEFINE(NeedsStrTab, 12);
-    RES_DEF_DEFINE(CouldNotResolveSymbol, 13);
+    BIO_RDEF_DEFINE_RES(InvalidInput, 1);
+    BIO_RDEF_DEFINE_RES(MissingDtEntry, 2);
+    BIO_RDEF_DEFINE_RES(DuplicatedDtEntry, 3);
+    BIO_RDEF_DEFINE_RES(InvalidSymEnt, 4);
+    BIO_RDEF_DEFINE_RES(InvalidModuleState, 5);
+    BIO_RDEF_DEFINE_RES(InvalidRelocEnt, 6);
+    BIO_RDEF_DEFINE_RES(InvalidRelocTableSize, 7);
+    BIO_RDEF_DEFINE_RES(RelaUnsupportedSymbol, 8);
+    BIO_RDEF_DEFINE_RES(UnrecognizedRelocType, 9);
+    BIO_RDEF_DEFINE_RES(InvalidRelocTableType, 10);
+    BIO_RDEF_DEFINE_RES(NeedsSymTab, 11);
+    BIO_RDEF_DEFINE_RES(NeedsStrTab, 12);
+    BIO_RDEF_DEFINE_RES(CouldNotResolveSymbol, 13);
+    BIO_RDEF_DEFINE_RES(RoNotInitialized, 14);
 
 }

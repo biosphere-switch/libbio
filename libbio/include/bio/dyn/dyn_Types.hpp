@@ -27,8 +27,8 @@ namespace bio::dyn {
 
         constexpr u32 NRO0 = 0x304F524E;
 
-        inline u32 GetNROSize(void *nro_buf) {
-            RET_UNLESS(nro_buf != nullptr, 0);
+        inline u32 GetNroSize(void *nro_buf) {
+            BIO_RET_UNLESS(nro_buf != nullptr, 0);
             return reinterpret_cast<Header*>(nro_buf)->size;
         }
 
@@ -63,7 +63,7 @@ namespace bio::dyn {
 
         inline void InitializeHeader(void *nrr_buf, u64 nrr_size, u64 program_id, u32 nro_count) {
             auto header = reinterpret_cast<Header*>(nrr_buf);
-            __builtin_memset(header, 0, sizeof(Header));
+            mem::ZeroSingle(header);
             header->magic = NRR0;
             header->program_id = program_id;
             header->size = nrr_size;
@@ -71,7 +71,7 @@ namespace bio::dyn {
             header->hash_count = nro_count;
         }
 
-        inline void SetNROHashAt(void *nrr_buf, const void *nro_buf, u64 nro_size, u32 nro_index) {
+        inline void SetNroHashAt(void *nrr_buf, const void *nro_buf, u64 nro_size, u32 nro_index) {
             const auto offset = GetNroOffset(nro_index);
             auto buf = reinterpret_cast<void*>(reinterpret_cast<u8*>(nrr_buf) + offset);
             crypto::CalculateSha256(nro_buf, nro_size, buf);

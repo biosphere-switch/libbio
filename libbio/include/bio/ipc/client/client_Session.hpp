@@ -35,11 +35,11 @@ namespace bio::ipc::client {
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
-            RES_TRY(svc::SendSyncRequest(handle));
+            BIO_RES_TRY(svc::SendSyncRequest(handle));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            RES_TRY(ParseRequestCommandResponse(ctx));
+            BIO_RES_TRY(ParseRequestCommandResponse(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -56,11 +56,11 @@ namespace bio::ipc::client {
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
-            RES_TRY(svc::SendSyncRequest(handle));
+            BIO_RES_TRY(svc::SendSyncRequest(handle));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            RES_TRY(ParseControlCommandResponse(ctx));
+            BIO_RES_TRY(ParseControlCommandResponse(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -158,7 +158,7 @@ namespace bio::ipc::client {
                 return "set:sys";
             }
 
-            inline Result PostInitialize(Session &session) override {
+            inline Result PostInitialize() {
                 // Optional
             }
         */
@@ -184,7 +184,7 @@ namespace bio::ipc::client {
         public:
             static inline constexpr const char *Name = "sm:";
 
-            inline Result PostInitialize(Session &session) override {
+            inline Result PostInitialize() {
                 // Optional
             }
         */
@@ -248,11 +248,11 @@ namespace bio::ipc::client {
     inline Result CreateSessionObject(mem::SharedObject<S> &out_obj) {
         static_assert(IsValidSessionType<S>, "Invalid input");
         Session session;
-        RES_TRY(impl::CreateSession<S>(session));
+        BIO_RES_TRY(impl::CreateSession<S>(session));
         
         auto session_obj = mem::NewShared<S>(session);
         if constexpr(HasPostInitialize<S>) {
-            RES_TRY(session_obj->PostInitialize());
+            BIO_RES_TRY(session_obj->PostInitialize());
         }
         
         out_obj = util::Move(session_obj);

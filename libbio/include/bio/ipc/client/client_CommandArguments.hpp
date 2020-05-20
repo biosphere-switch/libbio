@@ -53,7 +53,6 @@ namespace bio::ipc::client {
 
     template<HandleMode Mode>
     struct InHandle : public CommandArgument {
-
         u32 handle;
 
         constexpr InHandle(u32 handle) : handle(handle) {}
@@ -72,7 +71,6 @@ namespace bio::ipc::client {
     };
 
     struct InSession : public CommandArgument {
-
         SessionBase session;
 
         constexpr InSession(SessionBase session) : session(session) {}
@@ -96,7 +94,6 @@ namespace bio::ipc::client {
     };
 
     struct Buffer : public CommandArgument {
-    
         void *buf;
         u64 buf_size;
         BufferAttribute attr;
@@ -118,7 +115,6 @@ namespace bio::ipc::client {
 
     template<typename T>
     struct Out : public CommandArgument {
-
         T &value;
         u64 offset;
 
@@ -145,7 +141,6 @@ namespace bio::ipc::client {
     };
 
     struct OutProcessId : public CommandArgument {
-
         u64 &pid;
 
         constexpr OutProcessId(u64 &pid_ref) : pid(pid_ref) {}
@@ -165,7 +160,6 @@ namespace bio::ipc::client {
 
     template<HandleMode Mode, u32 Index>
     struct OutHandle : public CommandArgument {
-
         u32 &handle;
 
         constexpr OutHandle(u32 &handle_ref) : handle(handle_ref) {}

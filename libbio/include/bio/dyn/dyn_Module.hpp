@@ -3,8 +3,6 @@
 #include <bio/dyn/dyn_Relocation.hpp>
 #include <bio/mem/mem_SharedObject.hpp>
 
-#include <bio/svc/svc_Impl.hpp>
-
 namespace bio::dyn {
 
     enum class ModuleState {
@@ -56,8 +54,6 @@ namespace bio::dyn {
     Result LoadRawModule(void *base, mem::SharedObject<Module> &out_module);
     Result LoadNroModule(void *nro_buf, u64 nro_size, bool is_global, mem::SharedObject<Module> &out_module);
 
-    void UnloadModule(mem::SharedObject<Module> &mod);
-
     class Module {
     
         private:
@@ -95,14 +91,11 @@ namespace bio::dyn {
             Result ResolveSymbolBase(const char *name, void *&out_symbol);
 
         public:
-            Module() : state(ModuleState::Invalid), input(), /*dependencies(),*/ dynamic(nullptr), symtab(nullptr), strtab(nullptr), hash(nullptr) {
-                DEBUG_LOG("Module()");
-            }
+            Module() : state(ModuleState::Invalid), input(), /*dependencies(),*/ dynamic(nullptr), symtab(nullptr), strtab(nullptr), hash(nullptr) {}
 
             ~Module() {
                 // This won't do anything if the module isn't loaded (empty/non-initialized instances don't have anything to dispose)
                 this->Destroy();
-                DEBUG_LOG("~Module()");
             }
 
             inline constexpr bool IsValid() {
@@ -111,7 +104,7 @@ namespace bio::dyn {
 
             template<typename F>
             inline Result ResolveSymbol(const char *name, F &out_symbol) {
-                // static_assert(std::is_pointer_v<F>, "Invalid symbol type - must be a function pointer, like void(*)()");
+                static_assert(util::IsPointer<F>, "Invalid symbol type - must be a function pointer, like void(*)()");
                 return this->ResolveSymbolBase(name, reinterpret_cast<void*&>(out_symbol));
             }
 

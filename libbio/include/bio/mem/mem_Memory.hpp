@@ -47,7 +47,7 @@ namespace bio::mem {
 	
 	template<typename T>
 	inline void ZeroCount(T *ptr, u64 count) {
-		Fill(ptr, 0, sizeof(T) * count);
+		Zero(ptr, sizeof(T) * count);
 	}
 
 	template<typename T>
@@ -109,6 +109,18 @@ namespace bio::mem {
 			Free(ptr);
 			ptr->~T();
 		}
+	}
+
+	inline bool IsAddressAligned(void *addr, u64 align) {
+		const auto addr64 = reinterpret_cast<u64>(addr);
+		const auto inv_mask = align - 1;
+		return (addr64 & inv_mask) == 0;
+	}
+
+	template<typename T>
+	inline constexpr T AlignUp(T value, u64 align) {
+		const auto inv_mask = align - 1;
+		return static_cast<T>((value + inv_mask) & ~inv_mask);
 	}
 
 }

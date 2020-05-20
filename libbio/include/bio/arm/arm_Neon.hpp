@@ -6,8 +6,12 @@ namespace bio::arm {
 
     // Small implementation of arm_neon.h, only stuff used by hw-accelerated crypto
 
-    using i8x16 = __attribute__((neon_vector_type(16))) i8;
-    using u32x4 = __attribute__((neon_vector_type(4))) u32;
+    #define _BIO_ARM_NEON_V_TYPE_DEF(t, n) using t ## x ## n = __attribute__((neon_vector_type(n))) t
+
+    _BIO_ARM_NEON_V_TYPE_DEF(i8, 16);
+    _BIO_ARM_NEON_V_TYPE_DEF(u32, 4);
+
+    #undef _BIO_ARM_NEON_V_TYPE_DEF
 
     inline u32x4 vld1q_u32(const u32 *ptr) {
         return __builtin_neon_vld1q_v(ptr, 50);

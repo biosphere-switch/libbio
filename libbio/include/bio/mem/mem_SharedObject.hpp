@@ -1,7 +1,7 @@
 
 #pragma once
 #include <bio/mem/mem_Memory.hpp>
-#include <bio/util/util_Misc.hpp>
+#include <bio/util/util_Templates.hpp>
 
 #include <bio/svc/svc_Impl.hpp>
 

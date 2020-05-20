@@ -55,7 +55,7 @@ namespace bio::dyn {
 
             inline Result FindOffset(elf::Tag tag, void *&out_value, void *aslr_base) {
                 u64 intermediate = 0;
-                RES_TRY(this->FindValue(tag, intermediate));
+                BIO_RES_TRY(this->FindValue(tag, intermediate));
 
                 out_value = reinterpret_cast<void*>(reinterpret_cast<u8*>(aslr_base) + intermediate);
                 return ResultSuccess;
@@ -103,7 +103,7 @@ namespace bio::dyn {
             u64 g = 0;
             while(*name) {
                 h = (h << 4) + static_cast<u8>(*name++);
-                if((g = (h & 0xf0000000)) != 0) {
+                if((g = (h & 0xF0000000)) != 0) {
                     h ^= g >> 24;
                 }
                 h &= ~g;

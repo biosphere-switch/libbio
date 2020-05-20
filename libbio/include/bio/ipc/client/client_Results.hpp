@@ -4,9 +4,9 @@
 
 namespace bio::ipc::client::result {
 
-    RES_DEF_MODULE(300);
+    BIO_RDEF_MODULE(300);
 
-    RES_DEF_DEFINE(InvalidInput, 1);
-    RES_DEF_DEFINE(InvalidRequestCommandResponse, 2);
+    BIO_RDEF_DEFINE_RES(InvalidInput, 1);
+    BIO_RDEF_DEFINE_RES(InvalidRequestCommandResponse, 2);
 
 }

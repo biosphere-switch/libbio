@@ -103,16 +103,21 @@ namespace bio {
 
 #define BIO_BITMASK(n) (1 << n)
 
+#define BIO_IS_CONSTANT(v) (__builtin_constant_p(v) ? true : false)
+
+#define _BIO_ENSURE_STR_LITERAL(str) "" str ""
+#define BIO_ENSURE_STR_LITERAL(str) BIO_ENSURE_STR_LITERAL(str)
+
 #define _BIO_AS_RESULT static_cast<::bio::Result>
 
-#define RES_TRY(expr) ({ \
+#define BIO_RES_TRY(expr) ({ \
     const auto _tmp_rc = (expr); \
     if(_BIO_AS_RESULT(_tmp_rc).IsFailure()) { \
         return _tmp_rc; \
     } \
 })
 
-#define RES_TRY_EXCEPT(expr, except, ...) ({ \
+#define BIO_RES_TRY_EXCEPT(expr, except, ...) ({ \
     auto _tmp_rc = _BIO_AS_RESULT(expr); \
     auto _tmp_expect = _BIO_AS_RESULT(expr); \
     if(_tmp_rc.GetValue() != except.GetValue()) { \
@@ -122,11 +127,18 @@ namespace bio {
     } \
 })
 
-#define RET_UNLESS(expr, ret) ({ \
+#define BIO_RET_UNLESS(expr, ret) ({ \
     auto _tmp_ret = (ret); \
     if(!(expr)) { \
         return _tmp_ret; \
     } \
 })
 
-#define RET_IF(expr, ret) RET_UNLESS(!(expr), ret)
+#define BIO_RET_UNLESS_EX(expr, ...) ({ \
+    if(!(expr)) { \
+        __VA_ARGS__ \
+    } \
+})
+
+#define BIO_RET_IF(expr, ret) BIO_RET_UNLESS(!(expr), ret)
+#define BIO_RET_IF_EX(expr, ...) BIO_RET_UNLESS_EX(!(expr), ##__VA_ARGS__)

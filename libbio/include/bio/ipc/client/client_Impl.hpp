@@ -2,7 +2,7 @@
 #pragma once
 #include <bio/ipc/client/client_Types.hpp>
 #include <bio/util/util_Array.hpp>
-#include <bio/util/util_Misc.hpp>
+#include <bio/util/util_Templates.hpp>
 
 namespace bio::ipc::client {
 
@@ -516,8 +516,8 @@ namespace bio::ipc::client {
         }
 
         data_offset += sizeof(DataHeader);
-        RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
-        RES_TRY(header->value);
+        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
+        BIO_RES_TRY(header->value);
     
         ctx.out.data_offset = data_offset;
         return ResultSuccess;
@@ -549,8 +549,8 @@ namespace bio::ipc::client {
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
         data_offset += sizeof(DataHeader);
-        RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
-        RES_TRY(header->value);
+        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
+        BIO_RES_TRY(header->value);
 
         ctx.out.data_offset = data_offset;
         return ResultSuccess;

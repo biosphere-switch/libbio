@@ -19,7 +19,7 @@ namespace bio::diag {
         u8 verbosity;
         u32 payload_size;
     };
-    static_assert(sizeof(LogPacketHeader) == 0x18, "a");
+    static_assert(sizeof(LogPacketHeader) == 0x18, "LogPacketHeader");
 
     enum class LogDataChunkKey : u8 {
         LogSessionBegin,
@@ -39,6 +39,6 @@ namespace bio::diag {
         u8 key;
         u8 length;
     };
-    static_assert(sizeof(LogDataChunkHeader) == 2, "a");
+    static_assert(sizeof(LogDataChunkHeader) == 2, "LogDataChunkHeader");
 
 }

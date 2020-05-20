@@ -5,14 +5,16 @@
 
 namespace bio::service::sm {
 
-    struct ServiceName {
+    union ServiceName {
 
         static constexpr u64 NameLength = 8;
 
-        union {
-            char name[NameLength];
-            u64 value;
-        };
+        char name[NameLength];
+        u64 value;
+
+        inline constexpr u64 GetValue() {
+            return this->value;
+        }
 
         static inline constexpr ServiceName Encode(const char *name) {
             ServiceName srv_name = {};
@@ -26,10 +28,6 @@ namespace bio::service::sm {
             return srv_name;
         }
 
-        inline constexpr u64 GetValue() {
-            return this->value;
-        }
-
     };
     static_assert(sizeof(ServiceName) == ServiceName::NameLength, "Invalid");
 
@@ -40,7 +38,7 @@ namespace bio::service::sm {
                 ServiceName empty_srv_name = {};
                 ipc::client::Session dummy_srv;
                 auto rc = this->GetService(empty_srv_name, dummy_srv);
-                return rc != 0x415; // check that the error isn't "not initialized"
+                return rc != result::ResultNotInitialized;
             }
 
         public:
@@ -54,6 +52,7 @@ namespace bio::service::sm {
 
         public:
             inline Result Initialize() {
+                // If we can already access services, avoid calling the command
                 if(this->CheckCanAccessServices()) {
                     return ResultSuccess;
                 }
