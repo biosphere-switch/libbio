@@ -3,8 +3,6 @@
 #include <bio/svc/svc_Impl.hpp>
 #include <bio/util/util_Array.hpp>
 
-#include <bio/diag/diag_Log.hpp>
-
 namespace bio::crt0 {
 
     namespace {

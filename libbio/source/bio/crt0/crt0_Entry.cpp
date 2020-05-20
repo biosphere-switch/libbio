@@ -9,13 +9,6 @@
 
 void Main();
 
-extern "C" {
-
-    extern void *__bss_start;
-    extern void *__bss_end;
-
-}
-
 namespace bio::crt0 {
 
     extern ExitFunction g_ExitFunction;
