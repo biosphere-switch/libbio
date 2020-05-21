@@ -4,6 +4,7 @@
 #include <bio/service/sm/sm_UserNamedPort.hpp>
 #include <bio/service/lm/lm_LogService.hpp>
 #include <bio/crt0/crt0_ModuleName.hpp>
+#include <bio/os/os_Thread.hpp>
 
 namespace bio::crt0 {
 
@@ -165,12 +166,16 @@ namespace bio::diag {
                 if((packets != nullptr) && (packet_count > 0)) {
                     auto head_packet = &packets[0];
                     head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
+                    svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
+                    auto &cur_thr = os::GetCurrentThreadInfo();
+                    head_packet->header.thread_id = cur_thr.GetThreadId();
                     auto tail_packet = &packets[packet_count - 1];
                     tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
 
                     head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
                     head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
                     head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
+                    head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetThreadName(), cur_thr.GetThreadNameLength());
 
                     u32 remaining_len = metadata.text_log_len;
                     auto cur_packet = head_packet;

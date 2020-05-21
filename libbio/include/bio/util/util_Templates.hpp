@@ -60,6 +60,6 @@ namespace bio::util {
     };
 
     template<typename T>
-    using IsPointer = typename IsPointerBase<T>::Value;
+    constexpr auto IsPointer = IsPointerBase<T>::Value;
 
 }

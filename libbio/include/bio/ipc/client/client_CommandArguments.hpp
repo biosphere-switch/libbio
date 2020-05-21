@@ -38,10 +38,6 @@ namespace bio::ipc::client {
             switch(state) {
                 case CommandState::BeforeHeaderInitialization: {
                     ctx.in.send_process_id = true;
-                    // Add an u64 placeholder for the process id
-                    OffsetCalculator off(ctx.in.data_size);
-                    off.IncrementOffset<u64>();
-                    ctx.in.data_size = off.GetCurrentOffset();
                     break;
                 }
                 default:

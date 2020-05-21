@@ -3,13 +3,13 @@
 #include <bio/base.hpp>
 
 __attribute__((visibility("hidden")))
-inline void* operator new(unsigned long, void* __p) {
-	return __p; 
+inline void* operator new(unsigned long, void *ptr) {
+	return ptr; 
 }
 
 __attribute__((visibility("hidden")))
-inline void* operator new[](unsigned long, void* __p) {
-	return __p;
+inline void* operator new[](unsigned long, void *ptr) {
+	return ptr;
 }
 
 __attribute__((visibility("hidden")))

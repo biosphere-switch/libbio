@@ -36,30 +36,30 @@
 
 namespace bio::util {
 
-    int Printf(const char* format, ...);
+    i32 Printf(const char* format, ...);
 
-    int SPrintf(char* buffer, const char* format, ...);
+    i32 SPrintf(char* buffer, const char* format, ...);
 
-    int SNPrintf(char* buffer, u64 count, const char* format, ...);
+    i32 SNPrintf(char* buffer, u64 count, const char* format, ...);
 
-    int VSNPrintf(char* buffer, u64 count, const char* format, __builtin_va_list va);
+    i32 VSNPrintf(char* buffer, u64 count, const char* format, __builtin_va_list va);
 
-    int VPrintf(const char* format, __builtin_va_list va);
+    i32 VPrintf(const char* format, __builtin_va_list va);
 
-    int FctPrintf(void (*out)(char character, void* arg), void* arg, const char* format, ...);
+    i32 FctPrintf(void (*out)(char character, void* arg), void* arg, const char* format, ...);
 
-    inline u64 Strlen(const char *str) {
+    inline constexpr u64 Strlen(const char *str) {
         const char *s;
         for(s = str; *s; ++s);
         return s - str;
     }
 
-    inline void Strncpy(char* dst, const char* src, u64 count) {
+    inline constexpr void Strncpy(char* dst, const char* src, u64 count) {
         u64 i = 0;
         while(i++ != count && (*dst++ = *src++));
     }
 
-    inline i32 Strcmp(const char *s1, const char *s2) {
+    inline constexpr i32 Strcmp(const char *s1, const char *s2) {
         while((*s1 != '\0') && (*s2 != '\0') && (*s1 == *s2)) {
             s1++;
             s2++;

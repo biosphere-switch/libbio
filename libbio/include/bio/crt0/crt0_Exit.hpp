@@ -4,10 +4,12 @@
 
 namespace bio::crt0 {
 
+    using AtExitFunction = void(*)(void*);
     using ExitFunction = void(*)(i32 error_code);
 
     constexpr i32 SuccessExit = 0;
 
+    void RegisterAtExit(AtExitFunction fn, void *arg = nullptr);
     void Exit(i32 error_code);
 
 }

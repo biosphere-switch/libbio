@@ -106,7 +106,7 @@ namespace bio {
 #define BIO_IS_CONSTANT(v) (__builtin_constant_p(v) ? true : false)
 
 #define _BIO_ENSURE_STR_LITERAL(str) "" str ""
-#define BIO_ENSURE_STR_LITERAL(str) BIO_ENSURE_STR_LITERAL(str)
+#define BIO_ENSURE_STR_LITERAL(str) _BIO_ENSURE_STR_LITERAL(str)
 
 #define _BIO_AS_RESULT static_cast<::bio::Result>
 

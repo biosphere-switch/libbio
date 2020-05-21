@@ -75,7 +75,7 @@ DEF_SVC _ZN3bio3svc11SleepThreadEl
 	ret
 END_DEF_SVC
 
-DEF_SVC svcGetThreadPriority
+DEF_SVC _ZN3bio3svc17GetThreadPriorityERij
 	str x0, [sp, #-16]!
 	svc 0xC
 	ldr x2, [sp], #16
@@ -214,7 +214,7 @@ DEF_SVC svcSendAsyncRequestWithUserBuffer
 	ret
 END_DEF_SVC
 
-DEF_SVC svcGetProcessId
+DEF_SVC _ZN3bio3svc12GetProcessIdERyj
 	str x0, [sp, #-16]!
 	svc 0x24
 	ldr x2, [sp], #16
@@ -222,7 +222,7 @@ DEF_SVC svcGetProcessId
 	ret
 END_DEF_SVC
 
-DEF_SVC svcGetThreadId
+DEF_SVC _ZN3bio3svc11GetThreadIdERyj
 	str x0, [sp, #-16]!
 	svc 0x25
 	ldr x2, [sp], #16

@@ -25,7 +25,7 @@ namespace bio::crt0 {
 
         util::SizedArray<ExitEntry, MaxExitEntries> g_ExitEntries;
 
-        void CallAtExit() {
+        void ProcessAtExitEntries() {
             while(g_ExitEntries.Any()) {
                 auto &entry = g_ExitEntries.Back();
                 entry.Run();
@@ -35,28 +35,30 @@ namespace bio::crt0 {
 
     }
 
-    extern "C" {
-
-        i32 __cxa_atexit(void (*fn)(void*), void *args, void *dso_handle) {
-            // TODO: make use of dso handle?
-            g_ExitEntries.Push({ fn, args });
-            return 0;
-        }
-        
-    }
-
     ExitFunction g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
 
-    void D() {
-        g_ExitEntries.Clear();
+    void RegisterAtExit(AtExitFunction fn, void *arg) {
+        g_ExitEntries.Push({ fn, arg });
     }
 
     void Exit(i32 error_code) {
-        // Dispose executing atexit calls
-        CallAtExit();
+        // Run all entries
+        ProcessAtExitEntries();
 
         // g_ExitFunction must have a valid value, which is set by the CRT0
         g_ExitFunction(error_code);
+    }
+
+    extern "C" {
+
+        // Compiler-generated atexit calls are called with this symbol.
+        // TODO: make use of dso handle?
+
+        i32 __cxa_atexit(AtExitFunction fn, void *arg, void *dso_handle) {
+            RegisterAtExit(fn, arg);
+            return 0;
+        }
+        
     }
 
 }

@@ -2,6 +2,7 @@
 #pragma once
 #include <bio/dyn/dyn_Relocation.hpp>
 #include <bio/mem/mem_SharedObject.hpp>
+#include <bio/util/util_Templates.hpp>
 
 namespace bio::dyn {
 

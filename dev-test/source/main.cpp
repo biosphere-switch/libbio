@@ -77,8 +77,11 @@ Result Test() {
 }
 
 void Main() {
-    
+
+    /*
     auto rc = Test();
     BIO_DIAG_LOGF("Test: 0x%X", rc.GetValue());
+    */
+    BIO_DIAG_LOG("Main()");
 
 }

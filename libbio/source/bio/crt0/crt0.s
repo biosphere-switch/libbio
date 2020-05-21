@@ -31,5 +31,5 @@ _entry:
 	add x4, x4, #:lo12:__bss_start
 	adrp x5, __bss_end
 	add x5, x5, #:lo12:__bss_end
-	// Execute - bio::crt0::Entry(context_args_ptr, main_thread_handle_v, aslr_base_address, exit_lr, bss_start, bss_end)
+	// bio::crt0::Entry(context_args_ptr, main_thread_handle_v, aslr_base_address, exit_lr, bss_start, bss_end)
 	b _ZN3bio4crt05EntryEPvyS1_PFviES1_S1_

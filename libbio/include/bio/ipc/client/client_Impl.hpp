@@ -377,16 +377,20 @@ namespace bio::ipc::client {
         return base + data_offset;
     }
 
-    inline void InitializeCommand(CommandContext &ctx, CommandType type, u32 data_word_count) {
+    inline void InitializeCommand(CommandContext &ctx, CommandType type, u32 data_size) {
         auto tls = os::GetThreadLocalStorage<u8>();
         auto header = reinterpret_cast<CommandHeader*>(tls);
+
+        if(ctx.in.send_process_id) {
+            data_size += sizeof(u64);
+        }
 
         header->command_type = static_cast<u32>(type);
         header->send_static_count = static_cast<u32>(ctx.send_statics.GetSize());
         header->send_buffer_count = static_cast<u32>(ctx.send_buffers.GetSize());
         header->receive_buffer_count = static_cast<u32>(ctx.receive_buffers.GetSize());
         header->exchange_buffer_count = static_cast<u32>(ctx.exchange_buffers.GetSize());
-        header->data_word_count = data_word_count;
+        header->data_word_count = (data_size + 3) / 4;
         header->receive_static_type = CommandHeader::MakeReceiveStaticType(static_cast<u32>(ctx.receive_statics.GetSize()));
         header->pad = 0;
         header->unused = 0;
@@ -416,7 +420,7 @@ namespace bio::ipc::client {
         tls = WriteSizedArrayToTls(tls, ctx.receive_buffers);
         tls = WriteSizedArrayToTls(tls, ctx.exchange_buffers);
         ctx.in.data_words_offset = tls;
-        tls += sizeof(u32) * data_word_count;
+        tls += sizeof(u32) * header->data_word_count;
         tls = WriteSizedArrayToTls(tls, ctx.receive_statics);
     }
 
@@ -465,9 +469,8 @@ namespace bio::ipc::client {
         data_size = (data_size + 1) &~ 1;
         auto out_pointer_sizes_offset = data_size;
         data_size += sizeof(u16) * ctx.in.out_pointer_sizes.GetSize();
-        auto data_word_count = (data_size + 3) / 4;
 
-        InitializeCommand(ctx, CommandType::Request, data_word_count);
+        InitializeCommand(ctx, CommandType::Request, data_size);
         auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, tls);
 
         auto out_pointer_sizes = ctx.in.data_words_offset + out_pointer_sizes_offset;
@@ -528,9 +531,8 @@ namespace bio::ipc::client {
     inline void InitializeControlCommand(CommandContext &ctx, u32 request_id) {
         auto tls = os::GetThreadLocalStorage<u8>();
         u32 data_size = 16 + sizeof(DataHeader) + ctx.in.data_size;
-        auto data_word_count = (data_size + 3) / 4;
 
-        InitializeCommand(ctx, CommandType::Control, data_word_count);
+        InitializeCommand(ctx, CommandType::Control, data_size);
         auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, tls);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);

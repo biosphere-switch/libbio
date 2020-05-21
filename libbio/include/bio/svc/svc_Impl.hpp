@@ -22,9 +22,12 @@ namespace bio::svc {
     Result SetMemoryPermission(void *addr, u64 size, u32 perm); // 0x02
     Result QueryMemory(MemoryInfo &out_info, u32 &out_page_info, u64 address); // 0x06
     void __attribute__((noreturn)) ExitProcess(); // 0x07
+    Result GetThreadPriority(i32 &out_priority, Handle handle); // 0x0C
     Result CloseHandle(Handle handle); // 0x16
     Result ConnectToNamedPort(Handle &out_handle, const char *name); // 0x1F
     Result SendSyncRequest(Handle handle); // 0x21
+    Result GetProcessId(u64 &out_process_id, Handle handle); // 0x24
+    Result GetThreadId(u64 &out_thread_id, Handle handle); // 0x25
     Result OutputDebugString(const char *str, u64 len); // 0x27
     Result GetInfo(u64 &out_info, u32 id_0, Handle handle, u64 id_1); // 0x29
 
