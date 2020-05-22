@@ -4,7 +4,7 @@
 
 namespace bio::service::fatal {
 
-    enum class ThrowMode : u32 {
+    enum class Policy : u32 {
         ErrorReportAndErrorScreen,
         ErrorReport,
         ErrorScreen,

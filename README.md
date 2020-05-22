@@ -24,8 +24,6 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 - Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
 
-- Implement a proper result assertion system (with several assertion options: log via SVC/lm, exit process/to hbmenu, call fatal, svc::Break...)
-
 ## Done
 
 - Basic CRT0 initialization: heap, .bss cleanup, relocation, TLS setup
@@ -45,6 +43,8 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 - Added sync-related types: mutex
 
 - Implemented threading (almost completely)
+
+- Implemented an assertion system (lm, fatal, svcBreak, process exit)
 
 ## Future plans (maybe)
 

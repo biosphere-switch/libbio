@@ -2,6 +2,7 @@
 #pragma once
 #include <bio/util/util_String.hpp>
 #include <bio/mem/mem_Memory.hpp>
+#include <bio/diag/diag_Types.hpp>
 
 namespace bio::diag {
 
@@ -11,14 +12,6 @@ namespace bio::diag {
         Warn,
         Error,
         Fatal,
-    };
-
-    struct SourceInfo {
-        u32 line_number;
-        const char *file_name;
-        const u32 file_name_len;
-        const char *function_name;
-        const u32 function_name_len;
     };
 
     struct LogMetadata {
@@ -48,24 +41,24 @@ namespace bio::diag {
         ::bio::diag::LogImpl(_log_metadata); \
     })
 
-    #define BIO_DIAG_DETAILED_LOGF(log_severity, log_verbosity, fmt, ...) ({ \
-        char msg[0x400]; \
-        ::bio::mem::ZeroArray(msg); \
-        const u32 msg_len = static_cast<u32>(::bio::util::SNPrintf(msg, sizeof(msg), fmt, ##__VA_ARGS__)); \
-        BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
-    })
-
-    #define BIO_DIAG_DETAILED_VLOG(log_severity, log_verbosity, fmt, args) ({ \
-        char msg[0x400]; \
-        ::bio::mem::ZeroArray(msg); \
-        const u32 msg_len = static_cast<u32>(::bio::util::VSNPrintf(msg, sizeof(msg), fmt, args)); \
-        BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
-    })
-
-    #define BIO_DIAG_LOG(msg) BIO_DIAG_DETAILED_LOG(::bio::diag::LogSeverity::Info, false, BIO_ENSURE_STR_LITERAL(msg), __builtin_strlen(BIO_ENSURE_STR_LITERAL(msg)))
-
-    #define BIO_DIAG_LOGF(fmt, ...) BIO_DIAG_DETAILED_LOGF(::bio::diag::LogSeverity::Info, false, fmt, ##__VA_ARGS__)
-
-    #define BIO_DIAG_VLOG(fmt, args) BIO_DIAG_DETAILED_VLOG(::bio::diag::LogSeverity::Info, false, fmt, args)
-
 }
+
+#define BIO_DIAG_DETAILED_LOGF(log_severity, log_verbosity, fmt, ...) ({ \
+    char msg[0x400]; \
+    ::bio::mem::ZeroArray(msg); \
+    const u32 msg_len = static_cast<u32>(::bio::util::SNPrintf(msg, sizeof(msg), fmt, ##__VA_ARGS__)); \
+    BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
+})
+
+#define BIO_DIAG_DETAILED_VLOG(log_severity, log_verbosity, fmt, args) ({ \
+    char msg[0x400]; \
+    ::bio::mem::ZeroArray(msg); \
+    const u32 msg_len = static_cast<u32>(::bio::util::VSNPrintf(msg, sizeof(msg), fmt, args)); \
+    BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
+})
+
+#define BIO_DIAG_LOG(msg) BIO_DIAG_DETAILED_LOG(::bio::diag::LogSeverity::Info, false, BIO_ENSURE_STR_LITERAL(msg), __builtin_strlen(BIO_ENSURE_STR_LITERAL(msg)))
+
+#define BIO_DIAG_LOGF(fmt, ...) BIO_DIAG_DETAILED_LOGF(::bio::diag::LogSeverity::Info, false, fmt, ##__VA_ARGS__)
+
+#define BIO_DIAG_VLOG(fmt, args) BIO_DIAG_DETAILED_VLOG(::bio::diag::LogSeverity::Info, false, fmt, args)

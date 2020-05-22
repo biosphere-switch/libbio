@@ -230,7 +230,7 @@ DEF_SVC _ZN3bio3svc11GetThreadIdERyj
 	ret
 END_DEF_SVC
 
-DEF_SVC svcBreak
+DEF_SVC _ZN3bio3svc5BreakEjyy
 	svc 0x26
 	ret
 END_DEF_SVC

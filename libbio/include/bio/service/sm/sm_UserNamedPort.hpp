@@ -80,22 +80,20 @@ namespace bio::ipc::client::impl {
     template<typename S>
     inline Result CreateServiceSession(Session &out_session) {
         static_assert(ipc::client::IsService<S>, "Invalid input");
-        if(service::sm::IsInitialized()) {
+        BIO_SERVICE_DO_WITH(sm, _sm_rc, {
+            BIO_RES_TRY(_sm_rc);
             const auto name = S::GetName();
             DEBUG_LOG_FMT("sm - Name: '%s'", name);
             const auto srv_name = service::sm::ServiceName::Encode(name);
             Session tmp_session;
-            auto rc = service::sm::UserNamedPortSession->GetService(srv_name, tmp_session);
-            if(rc.IsSuccess()) {
-                if(S::IsDomain) {
-                    rc = tmp_session.ConvertToDomain();
-                }
+            BIO_RES_TRY(service::sm::UserNamedPortSession->GetService(srv_name, tmp_session));
+            if(S::IsDomain) {
+                BIO_RES_TRY(tmp_session.ConvertToDomain());
             }
-            if(rc.IsSuccess()) {
-                out_session = tmp_session;
-            }
-            return rc;
-        }
+
+            out_session = tmp_session;
+            return ResultSuccess;
+        });
         return 0xdead;
     }
 

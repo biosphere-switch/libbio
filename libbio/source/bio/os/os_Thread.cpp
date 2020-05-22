@@ -35,8 +35,6 @@ namespace bio::os {
             prio = os::GetCurrentThread().GetPriority();
         }
 
-        DEBUG_LOG_FMT("CreateThread -> prio: %d", prio);
-
         auto thread_obj = mem::NewShared<ThreadObject>(entry, entry_arg, stack_ptr, stack_size, owns_stack, priority);
         auto &thread = thread_obj->GetThread();
         

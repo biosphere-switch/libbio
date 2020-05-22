@@ -35,6 +35,7 @@ namespace bio::svc {
     Result SendSyncRequest(Handle handle); // 0x21
     Result GetProcessId(u64 &out_process_id, Handle handle); // 0x24
     Result GetThreadId(u64 &out_thread_id, Handle handle); // 0x25
+    Result Break(u32 break_reason, u64 inval1, u64 inval2); // 0x26
     Result OutputDebugString(const char *str, u64 len); // 0x27
     Result GetInfo(u64 &out_info, u32 id_0, Handle handle, u64 id_1); // 0x29
 

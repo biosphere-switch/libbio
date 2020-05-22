@@ -38,6 +38,7 @@ namespace bio::service::ns { \
     }
 
 // Use a service, and close it after using it (if the service wasn't initialized before this macro)
+
 #define BIO_SERVICE_DO_WITH(ns, rc_var, ...) ({ \
     const bool _already_init = ::bio::service::ns::IsInitialized(); \
     const auto rc_var = ::bio::service::ns::Initialize(); \
