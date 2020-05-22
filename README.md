@@ -20,27 +20,31 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 - Add several services (some interesting/relevant ones: applet, ns, account...)
 
-- Implement sync-related types: mutex, condition variable
+- Implement sync-related types: condition variable
 
-- Implement several kernel types: thread (fully), event, shared memory, transfer memory, waitable
+- Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
+
+- Implement a proper result assertion system (with several assertion options: log via SVC/lm, exit process/to hbmenu, call fatal, svc::Break...)
 
 ## Done
 
-- Basic CRT0 initialization: heap, .bss cleanup and relocation...
+- Basic CRT0 initialization: heap, .bss cleanup, relocation, TLS setup
 
 - Module name support (shown in crash reports)
 
 - Basic string utils found in standard libraries (`util::SPrintf`, `util::Strlen`, `util::Strcmp`...)
 
-- Supported services: sm (partially), set:sys (partially), ldr:ro (partially), lm, fsp-srv (partially)
+- Supported services: sm (partially), set:sys (partially), ldr:ro (partially), lm, fsp-srv (partially), fatal
 
 - Dynamic module support, being able to load modules from NROs (with ldr:ro) or raw memory.
 
-- Custom implementation of shared pointers (`mem::SharedObject`)
+- Custom implementation of shared pointers (`mem::SharedObject`) - global objects for services and modules make use of them, and they are properly disposed when the program finalizes.
 
 - Logging interface via lm service (diag), with proper and working packet generating and encoding.
 
-> TODO: add more here
+- Added sync-related types: mutex
+
+- Implemented threading (almost completely)
 
 ## Future plans (maybe)
 
