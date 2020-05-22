@@ -4,7 +4,8 @@
 #include <bio/service/sm/sm_UserNamedPort.hpp>
 #include <bio/service/lm/lm_LogService.hpp>
 #include <bio/crt0/crt0_ModuleName.hpp>
-#include <bio/os/os_Thread.hpp>
+#include <bio/os/os_Tls.hpp>
+#include <bio/os/os_Mutex.hpp>
 
 namespace bio::crt0 {
 
@@ -154,9 +155,13 @@ namespace bio::diag {
             return EncodePayloadBase(buf, t, sizeof(T));
         }
 
+
+        os::Mutex g_LoggingLock;
+
     }
 
     Result LogImpl(const LogMetadata &metadata) {
+        os::ScopedMutexLock lk(g_LoggingLock);
         BIO_SERVICE_DO_WITH(sm, _sm_rc, {
             BIO_RES_TRY(_sm_rc);
             BIO_SERVICE_DO_WITH(lm, _lm_rc, {
@@ -167,21 +172,22 @@ namespace bio::diag {
                     auto head_packet = &packets[0];
                     head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
                     svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
-                    auto &cur_thr = os::GetCurrentThreadInfo();
-                    head_packet->header.thread_id = cur_thr.GetThreadId();
+                    auto &cur_thr = os::GetCurrentThread();
+                    head_packet->header.thread_id = cur_thr.GetId();
+
                     auto tail_packet = &packets[packet_count - 1];
                     tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
 
                     head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
                     head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
                     head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
-                    head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetThreadName(), cur_thr.GetThreadNameLength());
+                    head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
 
-                    u32 remaining_len = metadata.text_log_len;
+                    auto remaining_len = metadata.text_log_len;
                     auto cur_packet = head_packet;
                     const char *text_log_buf = metadata.text_log;
                     while(remaining_len > 0) {
-                        const u64 cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
+                        const auto cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
                         cur_packet->payload.text_log.Initialize(LogDataChunkKey::TextLog, text_log_buf, cur_len);
                         cur_packet++;
                         text_log_buf += cur_len;

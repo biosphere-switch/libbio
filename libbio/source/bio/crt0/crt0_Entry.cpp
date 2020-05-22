@@ -2,7 +2,7 @@
 #include <bio/crt0/crt0_Exit.hpp>
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/dyn/dyn_Module.hpp>
-#include <bio/os/os_Thread.hpp>
+#include <bio/os/os_Tls.hpp>
 #include <bio/hbl/hbl_HbAbi.hpp>
 
 #include <bio/diag/diag_Log.hpp>
@@ -25,12 +25,12 @@ namespace bio::crt0 {
 
     namespace {
 
-        os::ThreadContext g_MainThread;
+        os::Thread g_MainThread;
 
         // Note: placing this as a separate function - if Main() or any calls inside the Entry function exited, this shared pointer wouldn't release properly.
         void RegisterBaseModule(void *aslr_base_address) {
             mem::SharedObject<dyn::Module> mod;
-            dyn::LoadRawModule(aslr_base_address, mod);
+            dyn::LoadRawModule(aslr_base_address, mod); // Assert
         }
 
         void SetExitFunction(crt0::ExitFunction exit_lr) {
@@ -48,8 +48,13 @@ namespace bio::crt0 {
             auto tls = os::GetThreadLocalStorage<os::ThreadLocalStorage>();
             mem::ZeroSingle(tls);
 
-            CRT0_RES_ASSERT(g_MainThread.Initialize(main_thread_handle, "MainThreadDebug"));
-            tls->context = &g_MainThread;
+            // Get the stack memory region.
+            svc::MemoryInfo info;
+            u32 page_info;
+            svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)); // Assert
+
+            g_MainThread.InitializeWith(main_thread_handle, "MainThreadDebug", reinterpret_cast<void*>(info.address), info.size, false); // Assert
+            tls->thread_ref = &g_MainThread;
         }
 
     }
@@ -99,7 +104,7 @@ namespace bio::crt0 {
 
         if(heap_address == nullptr) {
             // We weren't given override heap - set it ourselves
-            svc::SetHeapSize(heap_address, g_HeapSize);
+            svc::SetHeapSize(heap_address, g_HeapSize); // Assert
         }
 
         // Initialize memory allocator

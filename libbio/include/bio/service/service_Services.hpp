@@ -5,3 +5,4 @@
 #include <bio/service/set/sys/sys_SysService.hpp>
 #include <bio/service/fsp/fsp_FileSystemService.hpp>
 #include <bio/service/lm/lm_LogService.hpp>
+#include <bio/service/fatal/fatal_FatalService.hpp>

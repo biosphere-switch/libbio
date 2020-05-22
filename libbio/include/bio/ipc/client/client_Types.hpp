@@ -1,13 +1,10 @@
 
 #pragma once
-#include <bio/svc/svc_Impl.hpp>
-#include <bio/os/os_Thread.hpp>
-#include <bio/mem/mem_Memory.hpp>
+#include <bio/os/os_Tls.hpp>
 #include <bio/ipc/client/client_Results.hpp>
 
 namespace bio::ipc::client {
 
-    constexpr u32 InvalidHandle = 0;
     constexpr u32 InvalidObjectId = 0;
 
     struct SessionBase {

@@ -97,7 +97,9 @@ namespace bio {
     };
     static_assert(sizeof(Result) == 4, "Result");
 
-    static constexpr Result ResultSuccess = result::impl::SuccessValue;
+    constexpr Result ResultSuccess = result::impl::SuccessValue;
+
+    constexpr u32 InvalidHandle = 0;
 
 }
 

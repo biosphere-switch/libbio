@@ -2,12 +2,13 @@
 #pragma once
 #include <bio/util/util_String.hpp>
 #include <bio/svc/svc_Impl.hpp>
+#include <bio/mem/mem_SharedObject.hpp>
 
 namespace bio::os {
 
     typedef void(*ThreadEntrypoint)(void*);
 
-    constexpr u32 MaxThreadNameLength = 0x20;
+    constexpr i32 InvalidPriority = 0xFFFFFFFF;
 
     enum class ThreadState : u32 {
         NotInitialized,
@@ -17,117 +18,127 @@ namespace bio::os {
         Terminated,
     };
 
-    struct ThreadInfo {
-        u8 unk_reserved[0x34]; // This is made so that thread name is at offset 0x188
-        u32 state;
+    struct Thread {
+
+        static constexpr u32 NameMaxLength = 0x20;
+
+        u32 state; // TODO: make use of this
         i32 priority;
         bool owns_stack;
-        u8 pad[3];
         u64 id;
         void *stack;
         u64 stack_size;
         void *entry_arg;
         ThreadEntrypoint entry;
         void *tls_slots[0x20];
-        char name[MaxThreadNameLength];
-        void *name_addr;
-        u32 unk_critical_section;
-        u32 unk_cond_var;
+        char name[NameMaxLength + 1];
+        u32 name_len;
         u32 handle;
-        u32 name_length;
-        u64 unk_mutex;
 
-        constexpr ThreadInfo() : state(static_cast<u32>(ThreadState::NotInitialized)), priority(0), owns_stack(false), stack(nullptr), stack_size(0) {}
+        constexpr Thread() : state(static_cast<u32>(ThreadState::NotInitialized)), priority(0), owns_stack(false), stack(nullptr), stack_size(0) {}
+        constexpr Thread(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, bool owns_stack, i32 priority) : state(static_cast<u32>(ThreadState::NotInitialized)), priority(priority), owns_stack(owns_stack), stack(stack), stack_size(stack_size), entry_arg(entry_arg), entry(entry) {}
 
-        inline Result InitializeWith(u32 thread_handle, const char *name) {
+        inline Result InitializeWith(u32 thread_handle, const char *name, void *stack, u64 stack_size, bool owns_stack) {
             // Get thread ID.
             BIO_RES_TRY(svc::GetThreadId(this->id, thread_handle));
+
             // Get priority.
             BIO_RES_TRY(svc::GetThreadPriority(this->priority, thread_handle));
 
-            // Get the stack memory region.
-            svc::MemoryInfo info;
-            u32 page_info;
-            BIO_RES_TRY(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
+            this->SetName(name);
 
-            this->SetThreadName(name);
-
-            this->stack = reinterpret_cast<void*>(info.address);
-            this->stack_size = info.size;
-            this->owns_stack = false;
+            this->stack = stack;
+            this->stack_size = stack_size;
+            this->owns_stack = owns_stack;
             this->handle = thread_handle;
             return ResultSuccess;
         }
 
-        inline u64 GetThreadId() {
+        inline u32 GetHandle() {
+            return this->handle;
+        }
+
+        inline u64 GetId() {
             return this->id;
         }
 
-        inline i32 GetThreadPriority() {
+        inline i32 GetPriority() {
             return this->priority;
         }
 
-        inline void SetThreadName(const char *name) {
-            this->name_length = util::SNPrintf(this->name, MaxThreadNameLength, "%s", name);
-            this->name_addr = reinterpret_cast<u8*>(this) + __builtin_offsetof(ThreadInfo, name);
+        inline void SetName(const char *name) {
+            mem::ZeroArray(this->name);
+            util::Strncpy(this->name, name, NameMaxLength + 1);
+            this->name_len = BIO_UTIL_STRLEN(name);
         }
 
-        inline char *GetThreadName() {
-            return reinterpret_cast<char*>(this->name_addr);
+        inline char *GetName() {
+            return this->name;
         }
 
-        inline u32 GetThreadNameLength() {
-            return this->name_length;
+        inline u32 GetNameLength() {
+            return this->name_len;
         }
 
-    };
-    static_assert(sizeof(ThreadInfo) == 0x1A8);
+        // Functionality
 
-    constexpr u64 ThreadContextMagic = 0xFFFF534C544F4942; // BIOTLS(0xFF)(0xFF)
+        inline Result Start() {
+            return svc::StartThread(this->handle);
+        }
 
-    struct ThreadContext {
-        void *unk1;
-        void *unk2;
-        void *unk3;
-        void *unk4;
-        ThreadInfo thread_info;
-        u64 bio_magic;
-
-        constexpr ThreadContext() : unk1(nullptr), unk2(nullptr), unk3(nullptr), unk4(nullptr), thread_info(), bio_magic(0) {}
-
-        inline Result Initialize(u32 thread_handle, const char *name) {
-            BIO_RES_TRY(this->thread_info.InitializeWith(thread_handle, name));
-
-            this->bio_magic = ThreadContextMagic;
-            this->unk1 = this;
-            return ResultSuccess;
+        inline void Dispose() {
+            if(this->owns_stack) {
+                if(this->stack != nullptr) {
+                    mem::Free(this->stack);
+                    this->stack = nullptr;
+                }
+            }
+            svc::CloseHandle(this->handle);
         }
 
     };
-    static_assert(sizeof(ThreadContext) == 0x1D0);
 
-    struct ThreadLocalStorage {
-        u32 ipc_buffer[0x40];
-        u32 preemption_state;
-        u8 unk[0xF4];
-        ThreadContext *context;
+    class ThreadObject {
+
+        public:
+            static constexpr i32 DefaultCpuId = -2;
+
+        private:
+            Thread thread;
+
+        public:
+            constexpr ThreadObject(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, bool owns_stack, i32 priority) : thread(entry, entry_arg, stack, stack_size, owns_stack, priority) {}
+
+            ~ThreadObject() {
+                this->thread.Dispose();
+            }
+
+            inline Thread &GetThread() {
+                return this->thread;
+            }
+
+            inline Result Start() {
+                return this->thread.Start();
+            }
+
+            static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, i32 cpu_id, const char *name, mem::SharedObject<ThreadObject> &out_thread);
+
+            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, u64 stack_size, i32 priority, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
+                return Create(entry, entry_arg, nullptr, stack_size, priority, DefaultCpuId, name, out_thread);
+            }
+
+            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
+                return Create(entry, entry_arg, stack, stack_size, priority, DefaultCpuId, name, out_thread);
+            }
+
+            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, u64 stack_size, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
+                return Create(entry, entry_arg, nullptr, stack_size, InvalidPriority, DefaultCpuId, name, out_thread);
+            }
+
+            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
+                return Create(entry, entry_arg, stack, stack_size, InvalidPriority, DefaultCpuId, name, out_thread);
+            }
+
     };
-    static_assert(__builtin_offsetof(ThreadLocalStorage, context) == 0x1F8);
-    static_assert(sizeof(ThreadLocalStorage) == 0x200);
-
-    void *GetThreadLocalStorageValue();
-
-    template<typename T = void>
-    inline T *GetThreadLocalStorage() {
-        return reinterpret_cast<T*>(GetThreadLocalStorageValue());
-    }
-
-    inline ThreadContext *GetThreadContext() {
-        return GetThreadLocalStorage<ThreadLocalStorage>()->context;
-    }
-
-    inline ThreadInfo &GetCurrentThreadInfo() {
-        return GetThreadContext()->thread_info;
-    }
 
 }

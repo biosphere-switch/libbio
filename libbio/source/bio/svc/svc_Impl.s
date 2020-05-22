@@ -52,7 +52,7 @@ DEF_SVC _ZN3bio3svc11ExitProcessEv
 	ret
 END_DEF_SVC
 
-DEF_SVC svcCreateThread
+DEF_SVC _ZN3bio3svc12CreateThreadERjPvS2_S2_ii
 	str x0, [sp, #-16]!
 	svc 0x8
 	ldr x2, [sp], #16
@@ -60,17 +60,17 @@ DEF_SVC svcCreateThread
 	ret
 END_DEF_SVC
 
-DEF_SVC svcStartThread
+DEF_SVC _ZN3bio3svc11StartThreadEj
 	svc 0x9
 	ret
 END_DEF_SVC
 
-DEF_SVC svcExitThread
+DEF_SVC _ZN3bio3svc10ExitThreadEv
 	svc 0xA
 	ret
 END_DEF_SVC
 
-DEF_SVC _ZN3bio3svc11SleepThreadEl
+DEF_SVC _ZN3bio3svc11SleepThreadEx
 	svc 0xB
 	ret
 END_DEF_SVC
@@ -158,12 +158,12 @@ DEF_SVC svcCancelSynchronization
 	ret
 END_DEF_SVC
 
-DEF_SVC svcArbitrateLock
+DEF_SVC _ZN3bio3svc13ArbitrateLockEjPjj
 	svc 0x1A
 	ret
 END_DEF_SVC
 
-DEF_SVC svcArbitrateUnlock
+DEF_SVC _ZN3bio3svc15ArbitrateUnlockEPj
 	svc 0x1B
 	ret
 END_DEF_SVC
