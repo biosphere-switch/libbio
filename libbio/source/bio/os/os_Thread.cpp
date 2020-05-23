@@ -26,7 +26,7 @@ namespace bio::os {
         const bool owns_stack = stack == nullptr;
         auto stack_ptr = stack;
         if(owns_stack) {
-            stack_ptr = mem::Allocate(stack_size);
+            BIO_RES_TRY(mem::PageAllocate(stack_size, stack_ptr));
         }
 
         auto prio = priority;
@@ -35,7 +35,8 @@ namespace bio::os {
             prio = os::GetCurrentThread().GetPriority();
         }
 
-        auto thread_obj = mem::NewShared<ThreadObject>(entry, entry_arg, stack_ptr, stack_size, owns_stack, priority);
+        mem::SharedObject<ThreadObject> thread_obj;
+        BIO_RES_TRY(mem::NewShared<ThreadObject>(thread_obj, entry, entry_arg, stack_ptr, stack_size, owns_stack, priority));
         auto &thread = thread_obj->GetThread();
         
         u32 handle = 0;

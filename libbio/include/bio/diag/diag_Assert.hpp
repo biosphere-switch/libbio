@@ -48,8 +48,10 @@ namespace bio::diag {
     char msg[0x40]; \
     ::bio::mem::ZeroArray(msg); \
     const auto _rc = static_cast<::bio::Result>(rc); \
-    const auto len = static_cast<u32>(::bio::util::SPrintf(msg, "Result assertion failed: 0x%X (%04d-%04d)", _rc.GetValue(), _rc.GetModule() + 2000, _rc.GetDescription())); \
-    BIO_DIAG_DETAILED_ASSERT_BASE(mode, msg, len, _rc); \
+    if(_rc.IsFailure()) { \
+        const auto len = static_cast<u32>(::bio::util::SPrintf(msg, "%s -> 0x%X (%04d-%04d)", #rc, _rc.GetValue(), _rc.GetModule() + 2000, _rc.GetDescription())); \
+        BIO_DIAG_DETAILED_ASSERT_BASE(mode, msg, len, _rc); \
+    } \
 })
 
 #define BIO_DIAG_DETAILED_ASSERT(mode, cond) ({ \

@@ -15,7 +15,8 @@ namespace bio::dyn {
     }
     
     Result LoadRawModule(void *base, mem::SharedObject<Module> &out_module) {
-        auto mod = mem::NewShared<Module>();
+        mem::SharedObject<Module> mod;
+        BIO_RES_TRY(mem::NewShared<Module>(mod));
         BIO_RES_TRY(mod->LoadRaw(base));
         BIO_RES_TRY(mod->LoadBase());
 
@@ -24,9 +25,10 @@ namespace bio::dyn {
         return ResultSuccess;
     }
 
-    Result LoadNroModule(void *nro_buf, u64 nro_size, bool is_global, mem::SharedObject<Module> &out_module) {
-        auto mod = mem::NewShared<Module>();
-        BIO_RES_TRY(mod->LoadFromNro(nro_buf, nro_size, is_global));
+    Result LoadNroModule(void *nro_buf, bool is_global, mem::SharedObject<Module> &out_module) {
+        mem::SharedObject<Module> mod;
+        BIO_RES_TRY(mem::NewShared<Module>(mod));
+        BIO_RES_TRY(mod->LoadFromNro(nro_buf, is_global));
         BIO_RES_TRY(mod->LoadBase());
 
         g_Modules.Push(mod);
@@ -42,11 +44,12 @@ namespace bio::dyn {
         return ResultSuccess;
     }
 
-    Result Module::LoadFromNro(void *nro_data, u64 nro_data_size, bool is_global) {
+    Result Module::LoadFromNro(void *nro_data, bool is_global) {
         BIO_RET_UNLESS(service::ro::IsInitialized(), result::ResultRoNotInitialized);
         BIO_RET_UNLESS(mem::IsAddressAligned(nro_data, mem::PageAlignment), result::ResultInvalidInput);
 
         auto nro_header = reinterpret_cast<nro::Header*>(nro_data);
+        const auto nro_size = nro_header->size;
         const auto bss_size = nro_header->bss_size;
         BIO_RET_UNLESS(bss_size > 0, result::ResultInvalidInput);
 
@@ -57,25 +60,19 @@ namespace bio::dyn {
 
         const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
     
-        auto nrr_buf = mem::Allocate(nrr_size);
-        BIO_RET_UNLESS_EX(nrr_buf != nullptr, {
-            mem::Free(nrr_buf);
-            return bio::result::ResultMemoryAllocationFailure;
-        });
+        void *nrr_buf;
+        BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
 
         nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
-        nrr::SetNroHashAt(nrr_buf, nro_data, nro_data_size, 0);
+        nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
 
-        auto bss_buf = mem::Allocate(bss_size);
-        BIO_RET_UNLESS_EX(bss_buf != nullptr, {
-            mem::Free(bss_buf);
-            return bio::result::ResultMemoryAllocationFailure;
-        });
+        void *bss_buf;
+        BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
 
         BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
 
         u64 nro_addr = 0;
-        BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_data_size, bss_buf, bss_size, nro_addr));
+        BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_size, bss_buf, bss_size, nro_addr));
 
         this->input.nro = nro_data;
         this->input.nrr = nrr_buf;
@@ -89,7 +86,7 @@ namespace bio::dyn {
     }
 
     Result Module::LoadRaw(void *base) {
-        BIO_RET_UNLESS(base != nullptr, 0xdead4);
+        BIO_RET_UNLESS(base != nullptr, result::ResultInvalidInput);
 
         this->input.nro = nullptr;
         this->input.nrr = nullptr;

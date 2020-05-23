@@ -12,8 +12,6 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 ## TODO
 
-- Implement a proper memory allocation system - current one is fairly simple and cannot reallocate/free...
-
 - Implement a filesystem device (in replacement of stuff like `fopen`, `fwrite`...)
 
 - Fully implement CRT0 initialization: homebrew API processing, argv
@@ -25,6 +23,8 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 - Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
 
 ## Done
+
+- Working memory allocation system - not the best for sure, but does its job properly
 
 - Basic CRT0 initialization: heap, .bss cleanup, relocation, TLS setup
 

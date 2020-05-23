@@ -6,6 +6,7 @@
 #include <bio/hbl/hbl_HbAbi.hpp>
 
 #include <bio/diag/diag_Log.hpp>
+#include <bio/diag/diag_Assert.hpp>
 #include <bio/service/service_Services.hpp>
 
 // Entrypoint
@@ -30,7 +31,7 @@ namespace bio::crt0 {
         // Note: placing this as a separate function - if Main() or any calls inside the Entry function exited, this shared pointer wouldn't release properly.
         void RegisterBaseModule(void *aslr_base_address) {
             mem::SharedObject<dyn::Module> mod;
-            dyn::LoadRawModule(aslr_base_address, mod); // Assert
+            BIO_DIAG_RES_ASSERT(dyn::LoadRawModule(aslr_base_address, mod));
         }
 
         void SetExitFunction(crt0::ExitFunction exit_lr) {
@@ -51,7 +52,7 @@ namespace bio::crt0 {
             // Get the stack memory region.
             svc::MemoryInfo info;
             u32 page_info;
-            svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)); // Assert
+            BIO_DIAG_RES_ASSERT(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
 
             g_MainThread.InitializeWith(main_thread_handle, "MainThreadDebug", reinterpret_cast<void*>(info.address), info.size, false); // Assert
             tls->thread_ref = &g_MainThread;
@@ -104,14 +105,14 @@ namespace bio::crt0 {
 
         if(heap_address == nullptr) {
             // We weren't given override heap - set it ourselves
-            svc::SetHeapSize(heap_address, g_HeapSize); // Assert
+            BIO_DIAG_RES_ASSERT(svc::SetHeapSize(heap_address, g_HeapSize));
         }
-
-        // Initialize memory allocator
-        mem::Initialize(heap_address, g_HeapSize);
 
         // Prepare TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
+
+        // Initialize memory allocator
+        mem::Initialize(heap_address, g_HeapSize);
 
         // Register self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);

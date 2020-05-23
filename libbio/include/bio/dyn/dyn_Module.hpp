@@ -53,13 +53,13 @@ namespace bio::dyn {
     class Module;
     
     Result LoadRawModule(void *base, mem::SharedObject<Module> &out_module);
-    Result LoadNroModule(void *nro_buf, u64 nro_size, bool is_global, mem::SharedObject<Module> &out_module);
+    Result LoadNroModule(void *nro_buf, bool is_global, mem::SharedObject<Module> &out_module);
 
     class Module {
     
         private:
             friend Result LoadRawModule(void *base, mem::SharedObject<Module> &out_module);
-            friend Result LoadNroModule(void *nro_buf, u64 nro_size, bool is_global, mem::SharedObject<Module> &out_module);
+            friend Result LoadNroModule(void *nro_buf, bool is_global, mem::SharedObject<Module> &out_module);
 
         private:
             ModuleState state;
@@ -71,7 +71,7 @@ namespace bio::dyn {
             u32 *hash;
 
             Result LoadBase();
-            Result LoadFromNro(void *nro_data, u64 nro_data_size, bool is_global);
+            Result LoadFromNro(void *nro_data, bool is_global);
             Result LoadRaw(void *base);
 
             Result Scan();

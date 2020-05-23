@@ -111,7 +111,7 @@ namespace bio::diag {
 
         };
 
-        LogPacket *AllocatePackets(const u32 text_log_len, u32 &out_count) {
+        Result AllocatePackets(const u32 text_log_len, LogPacket *&out_packets, u32 &out_count) {
             auto remaining_len = text_log_len;
             u32 packet_count = 1;
             while(remaining_len > MaxStringLength) {
@@ -119,12 +119,11 @@ namespace bio::diag {
                 remaining_len -= MaxStringLength;
             }
 
-            auto packets = mem::AllocateCount<LogPacket>(packet_count);
-            if(packets != nullptr) {
-                mem::ZeroCount(packets, packet_count);
-                out_count = packet_count;
-            }
-            return packets;
+            BIO_RES_TRY(mem::AllocateCount(packet_count, out_packets));
+            
+            mem::ZeroCount(out_packets, packet_count);
+            out_count = packet_count;
+            return ResultSuccess;
         }
 
         void FreePackets(LogPacket *packets) {
@@ -166,71 +165,76 @@ namespace bio::diag {
             BIO_RES_TRY(_sm_rc);
             BIO_SERVICE_DO_WITH(lm, _lm_rc, {
                 BIO_RES_TRY(_lm_rc);
+
+                LogPacket *packets;
                 u32 packet_count = 0;
-                auto packets = AllocatePackets(metadata.text_log_len, packet_count);
-                if((packets != nullptr) && (packet_count > 0)) {
-                    auto head_packet = &packets[0];
-                    head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
-                    svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
-                    auto &cur_thr = os::GetCurrentThread();
-                    head_packet->header.thread_id = cur_thr.GetId();
+                BIO_RES_TRY(AllocatePackets(metadata.text_log_len, packets, packet_count));
+                
+                auto head_packet = &packets[0];
+                head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
+                svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
+                auto &cur_thr = os::GetCurrentThread();
+                head_packet->header.thread_id = cur_thr.GetId();
 
-                    auto tail_packet = &packets[packet_count - 1];
-                    tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
+                auto tail_packet = &packets[packet_count - 1];
+                tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
 
-                    head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
-                    head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
-                    head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
-                    head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
+                head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
+                head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
+                head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
+                head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
 
-                    auto remaining_len = metadata.text_log_len;
-                    auto cur_packet = head_packet;
-                    const char *text_log_buf = metadata.text_log;
-                    while(remaining_len > 0) {
-                        const auto cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
-                        cur_packet->payload.text_log.Initialize(LogDataChunkKey::TextLog, text_log_buf, cur_len);
-                        cur_packet++;
-                        text_log_buf += cur_len;
-                        remaining_len -= cur_len;
-                    }
-
-                    mem::SharedObject<service::lm::Logger> logger;
-                    BIO_RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
-
-                    for(u32 i = 0; i < packet_count; i++) {
-                        auto cur_packet = &packets[i];
-                        cur_packet->header.flags |= static_cast<u8>(LogPacketFlags::LittleEndian);
-                        cur_packet->header.severity = static_cast<u8>(metadata.severity);
-                        cur_packet->header.verbosity = static_cast<u8>(metadata.verbosity);
-                        
-                        cur_packet->header.payload_size = cur_packet->payload.ComputeSize();
-                        const u64 log_buf_size = cur_packet->ComputeSize();
-
-                        auto log_buf = mem::Allocate<u8>(log_buf_size);
-                        if(log_buf != nullptr) {
-                            auto encode_buf = EncodePayload(log_buf, cur_packet->header);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_begin);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_end);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.text_log);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.line_number);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.file_name);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.function_name);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.module_name);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.thread_name);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_packet_drop_count);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.user_system_clock);
-                            encode_buf = EncodePayload(encode_buf, cur_packet->payload.process_name);
-
-                            auto rc = logger->Log(log_buf, log_buf_size);
-                            mem::Free(log_buf);
-                            if(rc.IsFailure()) {
-                                FreePackets(packets);
-                                return rc;
-                            }
-                        }
-                    }
-                    FreePackets(packets);
+                auto remaining_len = metadata.text_log_len;
+                auto cur_packet = head_packet;
+                const char *text_log_buf = metadata.text_log;
+                while(remaining_len > 0) {
+                    const auto cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
+                    cur_packet->payload.text_log.Initialize(LogDataChunkKey::TextLog, text_log_buf, cur_len);
+                    cur_packet++;
+                    text_log_buf += cur_len;
+                    remaining_len -= cur_len;
                 }
+
+                mem::SharedObject<service::lm::Logger> logger;
+                BIO_RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
+
+                for(u32 i = 0; i < packet_count; i++) {
+                    auto cur_packet = &packets[i];
+                    cur_packet->header.flags |= static_cast<u8>(LogPacketFlags::LittleEndian);
+                    cur_packet->header.severity = static_cast<u8>(metadata.severity);
+                    cur_packet->header.verbosity = static_cast<u8>(metadata.verbosity);
+                    
+                    cur_packet->header.payload_size = cur_packet->payload.ComputeSize();
+                    const u64 log_buf_size = cur_packet->ComputeSize();
+
+                    u8 *log_buf;
+                    auto rc = mem::Allocate(log_buf_size, log_buf);
+                    if(rc.IsFailure()) {
+                        FreePackets(packets);
+                        return rc;
+                    }
+                    
+                    auto encode_buf = EncodePayload(log_buf, cur_packet->header);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_begin);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_end);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.text_log);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.line_number);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.file_name);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.function_name);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.module_name);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.thread_name);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_packet_drop_count);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.user_system_clock);
+                    encode_buf = EncodePayload(encode_buf, cur_packet->payload.process_name);
+
+                    rc = logger->Log(log_buf, log_buf_size);
+                    mem::Free(log_buf);
+                    if(rc.IsFailure()) {
+                        FreePackets(packets);
+                        return rc;
+                    }
+                }
+                FreePackets(packets);
             });
         });
         return ResultSuccess;

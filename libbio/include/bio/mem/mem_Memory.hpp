@@ -1,6 +1,6 @@
 
 #pragma once
-#include <bio/base.hpp>
+#include <bio/mem/mem_Results.hpp>
 
 __attribute__((visibility("hidden")))
 inline void* operator new(unsigned long, void *ptr) {
@@ -20,10 +20,45 @@ inline void operator delete[](void*, void*) {}
 
 namespace bio::mem {
 
+	struct AllocationInfo {
+		u64 address;
+		u64 size;
+
+		constexpr AllocationInfo() : address(0), size(0) {}
+
+		inline constexpr bool IsValid() {
+			return this->size > 0;
+		}
+
+		inline constexpr u64 GetEndAddress() {
+			return this->address + this->size;
+		}
+
+		inline constexpr bool IsAddressIn(u64 addr) {
+			return (this->address <= addr) && (addr < this->GetEndAddress());
+		}
+		
+		inline constexpr bool IsInRegion(u64 addr, u64 size) {
+			const auto addr_end = addr + size;
+			return ((addr <= this->address) && (this->GetEndAddress() < addr_end)) || IsAddressIn(addr);
+		}
+
+		inline constexpr void Clear() {
+			this->address = 0;
+			this->size = 0;
+		}
+
+	};
+
 	void Initialize(void *address, u64 size);
 
-	void *AllocateAligned(u64 alignment, u64 size);
+	Result AllocateAligned(u64 alignment, u64 size, void *&out_addr);
 	void Free(void *ptr);
+
+	bool IsAllocated(void *address);
+	bool IsFree(void *address);
+
+	AllocationInfo GetAllocationInfo(void *address);
 
 	inline void Set(void *ptr, u64 index, u8 value) {
 		reinterpret_cast<u8*>(ptr)[index] = value;
@@ -77,37 +112,42 @@ namespace bio::mem {
 		}
 	}
 
+	constexpr u64 NoAlignment = 0;
+
 	constexpr u64 PageAlignment = 0x1000;
 
 	template<typename T = void>
-	inline T *Allocate(u64 size) {
-		return reinterpret_cast<T*>(AllocateAligned(PageAlignment, size));
+	inline Result Allocate(u64 size, T *&out) {
+		return AllocateAligned(NoAlignment, size, reinterpret_cast<void*&>(out));
+	}
+	
+	template<typename T = void>
+	inline Result PageAllocate(u64 size, T *&out) {
+		return AllocateAligned(PageAlignment, size, reinterpret_cast<void*&>(out));
 	}
 
 	template<typename T>
-	inline T *AllocateCount(u64 count) {
-		return Allocate<T>(sizeof(T) * count);
+	inline Result AllocateCount(u64 count, T *&out) {
+		return Allocate<T>(sizeof(T) * count, out);
 	}
 
 	template<typename T>
-	inline T *AllocateSingle() {
-		return AllocateCount<T>(1);
+	inline Result AllocateSingle(T *&out) {
+		return AllocateCount<T>(1, out);
 	}
 
 	template<typename T, typename ...Args>
-	inline T *New(Args &&...args) {
-		auto obj = AllocateSingle<T>();
-		if(obj != nullptr) {
-			new (obj) T(args...);
-		}
-		return obj;
+	inline Result New(T *&out, Args &&...args) {
+		BIO_RES_TRY(AllocateSingle(out));
+		new (out) T(args...);
+		return ResultSuccess;
 	}
 
 	template<typename T>
 	inline void Delete(T *ptr) {
 		if(ptr != nullptr) {
-			Free(ptr);
 			ptr->~T();
+			Free(ptr);
 		}
 	}
 

@@ -37,15 +37,11 @@ namespace bio::mem {
                     void Acquire(U *p) {
                         if(p != nullptr) {
                             if(this->pn == nullptr) {
-                                this->pn = mem::AllocateSingle<i64>();
+                                mem::AllocateSingle(this->pn); // Assert?
                                 *this->pn = 1;
                             }
                             else {
                                 ++(*this->pn);
-                            }
-                            u32 val = 0;
-                            if(this->pn != nullptr) {
-                                val = *this->pn;
                             }
                         }
                     }
@@ -58,10 +54,6 @@ namespace bio::mem {
                                 mem::Delete(p);
                                 mem::Free(this->pn);
                                 this->pn = nullptr;
-                            }
-                            u32 val = 0;
-                            if(this->pn != nullptr) {
-                                val = *this->pn;
                             }
                         }
                     }
@@ -166,9 +158,12 @@ namespace bio::mem {
     }
 
     template<typename T, typename ...Args>
-    inline SharedObject<T> NewShared(Args &&...args) {
-        auto obj = New<T>(args...);
-        return util::Move(SharedObject<T>(obj));
+    inline Result NewShared(SharedObject<T> &out_obj, Args &&...args) {
+        T *obj;
+        BIO_RES_TRY(New<T>(obj, args...));
+        
+        out_obj = util::Move(SharedObject<T>(obj));
+        return ResultSuccess;
     }
 
 }

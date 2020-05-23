@@ -250,7 +250,8 @@ namespace bio::ipc::client {
         Session session;
         BIO_RES_TRY(impl::CreateSession<S>(session));
         
-        auto session_obj = mem::NewShared<S>(session);
+        mem::SharedObject<S> session_obj;
+        BIO_RES_TRY(mem::NewShared<S>(session_obj, session));
         if constexpr(HasPostInitialize<S>) {
             BIO_RES_TRY(session_obj->PostInitialize());
         }
