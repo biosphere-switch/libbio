@@ -54,7 +54,7 @@ namespace bio::crt0 {
             u32 page_info;
             BIO_DIAG_RES_ASSERT(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
 
-            g_MainThread.InitializeWith(main_thread_handle, "MainThreadDebug", reinterpret_cast<void*>(info.address), info.size, false); // Assert
+            g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false); // Assert
             tls->thread_ref = &g_MainThread;
         }
 

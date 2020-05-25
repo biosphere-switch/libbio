@@ -14,7 +14,7 @@ BIO_CRT0_DEFINE_MODULE_NAME("custom-module");
 
 namespace bio::diag {
 
-    auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::SvcBreak;
+    auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::ProcessExit;
 
 }
 
@@ -79,7 +79,7 @@ void clientThread(void*) {
     service::CreateService(srv);
 
     u32 out = 0;
-    auto rc = srv->Demo0(13, out);
+    auto rc = srv->Demo0(9, out);
 
     BIO_DIAG_LOGF("bio-srv Demo0 -> rc: 0x%X, val: %d", rc.GetValue(), out);
 }
