@@ -14,6 +14,10 @@ namespace bio::util {
             this->Clear();
         }
 
+        inline constexpr T *Get() {
+            return this->array;
+        }
+
         inline constexpr u64 GetMaxLength() {
             return N;
         }
@@ -40,8 +44,19 @@ namespace bio::util {
             return false;
         }
 
+        inline constexpr void PopAt(u32 index) {
+            this->size--;
+            for(u32 i = index; i < this->size; i++) {
+                this->array[i] = this->array[i + 1];
+            }
+        }
+
         inline constexpr bool IsEmpty() {
             return this->GetSize() == 0;
+        }
+
+        inline constexpr bool IsFull() {
+            return this->GetSize() == N;
         }
 
         inline constexpr bool Any() {

@@ -18,7 +18,7 @@ namespace bio::service::lm {
 
         public:
             inline Result Log(void *buf, u64 buf_size) {
-                return this->session.SendRequestCommand<0>(ipc::client::Buffer(buf, buf_size, ipc::client::BufferAttribute::In | ipc::client::BufferAttribute::AutoSelect));
+                return this->session.SendRequestCommand<0>(ipc::client::Buffer(buf, buf_size, ipc::BufferAttribute::In | ipc::BufferAttribute::AutoSelect));
             }
 
             inline Result SetDestination(LogDestination destination) {

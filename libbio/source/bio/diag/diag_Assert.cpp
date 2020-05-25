@@ -10,6 +10,10 @@ namespace bio::diag {
 
     namespace {
 
+        void SvcOutputAssert(const AssertMetadata &metadata) {
+            svc::OutputDebugString(metadata.assertion_msg, metadata.assertion_msg_len);
+        }
+
         void DiagLogAssert(const AssertMetadata &metadata) {
             const LogMetadata _log_metadata = {
                 .source_info = metadata.source_info,
@@ -55,27 +59,21 @@ namespace bio::diag {
         if(mode == AssertMode::Default) {
             mode = g_DefaultAssertMode;
         }
-        switch(mode) {
-            case AssertMode::DiagLog: {
-                DiagLogAssert(metadata);
-                break;
-            }
-            case AssertMode::ProcessExit: {
-                ProcessExitAssert(metadata);
-                break;
-            }
-            case AssertMode::Fatal: {
-                FatalAssert(metadata);
-                break;
-            }
-            case AssertMode::SvcBreak: {
-                SvcBreakAssert(metadata);
-                break;
-            }
-            default: {
-                // What to do here?
-                break;
-            }
+
+        if(static_cast<bool>(mode & AssertMode::SvcOutput)) {
+            SvcOutputAssert(metadata);
+        }
+        if(static_cast<bool>(mode & AssertMode::DiagLog)) {
+            DiagLogAssert(metadata);
+        }
+        if(static_cast<bool>(mode & AssertMode::ProcessExit)) {
+            ProcessExitAssert(metadata);
+        }
+        if(static_cast<bool>(mode & AssertMode::Fatal)) {
+            FatalAssert(metadata);
+        }
+        if(static_cast<bool>(mode & AssertMode::SvcBreak)) {
+            SvcBreakAssert(metadata);
         }
     }
 

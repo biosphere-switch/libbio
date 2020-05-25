@@ -10,18 +10,18 @@ namespace bio::ipc::client {
         T value;
         u64 offset;
 
-        constexpr In(T type) : value(type), offset(0) {}
+        constexpr In(T val) : value(val), offset(0) {}
 
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
                 case CommandState::BeforeHeaderInitialization: {
-                    OffsetCalculator off(ctx.in.data_size);
+                    util::OffsetCalculator off(ctx.in.data_size);
                     this->offset = off.GetNextOffset<T>();
                     ctx.in.data_size = off.GetCurrentOffset();
                     break;
                 }
                 case CommandState::BeforeRequest: {
-                    OffsetCalculator off(ctx.in.data_offset);
+                    util::OffsetCalculator off(ctx.in.data_offset);
                     off.SetByOffset<T>(this->offset, this->value);
                     break;
                 }
@@ -119,13 +119,13 @@ namespace bio::ipc::client {
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
                 case CommandState::AfterRequest: {
-                    OffsetCalculator off(ctx.out.data_size);
+                    util::OffsetCalculator off(ctx.out.data_size);
                     this->offset = off.GetNextOffset<T>();
                     ctx.out.data_size = off.GetCurrentOffset();
                     break;
                 }
                 case CommandState::AfterResponseParse: {
-                    OffsetCalculator off(ctx.out.data_offset);
+                    util::OffsetCalculator off(ctx.out.data_offset);
                     this->value = off.GetByOffset<T>(this->offset);
                     break;
                 }

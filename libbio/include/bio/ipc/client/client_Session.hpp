@@ -31,7 +31,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            InitializeRequestCommand(ctx, RequestId, DomainCommandType::SendMessage);
+            WriteRequestCommandOnTls(ctx, RequestId, DomainCommandType::SendMessage);
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
@@ -39,7 +39,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            BIO_RES_TRY(ParseRequestCommandResponse(ctx));
+            BIO_RES_TRY(ReadRequestCommandResponseFromTls(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -52,7 +52,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            InitializeControlCommand(ctx, RequestId);
+            WriteControlCommandOnTls(ctx, RequestId);
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
@@ -60,7 +60,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            BIO_RES_TRY(ParseControlCommandResponse(ctx));
+            BIO_RES_TRY(ReadControlCommandResponseFromTls(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -88,13 +88,13 @@ namespace bio::ipc::client {
                 if(this->IsDomain()) {
                     DEBUG_LOG_FMT("Closing as domain: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     CommandContext ctx(this->GetBase());
-                    InitializeRequestCommand(ctx, NoRequestId, DomainCommandType::Close);
+                    WriteRequestCommandOnTls(ctx, NoRequestId, DomainCommandType::Close);
                     svc::SendSyncRequest(this->handle);
                 }
                 else if(this->owns_handle) {
                     DEBUG_LOG_FMT("Closing as handle: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     CommandContext ctx(this->GetBase());
-                    InitializeCloseCommand(ctx);
+                    WriteCloseCommandOnTls(ctx);
                     svc::SendSyncRequest(this->handle);
                 }
                 if(this->owns_handle) {

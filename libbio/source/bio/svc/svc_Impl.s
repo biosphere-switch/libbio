@@ -145,7 +145,7 @@ DEF_SVC svcResetSignal
 	ret
 END_DEF_SVC
 
-DEF_SVC svcWaitSynchronization
+DEF_SVC _ZN3bio3svc19WaitSynchronizationERiPKjiy
 	str x0, [sp, #-16]!
 	svc 0x18
 	ldr x2, [sp], #16
@@ -361,7 +361,7 @@ DEF_SVC svcCreateSession
 	ret
 END_DEF_SVC
 
-DEF_SVC svcAcceptSession
+DEF_SVC _ZN3bio3svc13AcceptSessionERjj
 	str x0, [sp, #-16]!
 	svc 0x41
 	ldr x2, [sp], #16
@@ -374,7 +374,7 @@ DEF_SVC svcReplyAndReceiveLight
 	ret
 END_DEF_SVC
 
-DEF_SVC svcReplyAndReceive
+DEF_SVC _ZN3bio3svc15ReplyAndReceiveERiPKjijy
 	str x0, [sp, #-16]!
 	svc 0x43
 	ldr x2, [sp], #16
@@ -661,7 +661,7 @@ DEF_SVC svcCreatePort
 	ret
 END_DEF_SVC
 
-DEF_SVC svcManageNamedPort
+DEF_SVC _ZN3bio3svc15ManageNamedPortERjPKci
 	str x0, [sp, #-16]!
 	svc 0x71
 	ldr x2, [sp], #16

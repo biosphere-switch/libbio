@@ -37,7 +37,7 @@ namespace bio::service::ro {
             }
 
             inline Result Initialize() {
-                return this->session.SendRequestCommand<4>(ipc::client::InProcessId(), ipc::client::InHandle<ipc::client::HandleMode::Copy>(svc::CurrentProcessPseudoHandle));
+                return this->session.SendRequestCommand<4>(ipc::client::InProcessId(), ipc::client::InHandle<ipc::HandleMode::Copy>(svc::CurrentProcessPseudoHandle));
             }
 
     };

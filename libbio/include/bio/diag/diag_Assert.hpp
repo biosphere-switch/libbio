@@ -7,12 +7,21 @@
 namespace bio::diag {
 
     enum class AssertMode {
-        Default,
-        DiagLog,
-        ProcessExit,
-        Fatal,
-        SvcBreak,
+        Default = BIO_BITMASK(0),
+        SvcOutput = BIO_BITMASK(1),
+        DiagLog = BIO_BITMASK(2),
+        ProcessExit = BIO_BITMASK(3),
+        Fatal = BIO_BITMASK(4),
+        SvcBreak = BIO_BITMASK(5),
     };
+
+    inline constexpr AssertMode operator|(AssertMode lhs, AssertMode rhs) {
+        return static_cast<AssertMode>(static_cast<u8>(lhs) | static_cast<u8>(rhs));
+    }
+
+    inline constexpr AssertMode operator&(AssertMode lhs, AssertMode rhs) {
+        return static_cast<AssertMode>(static_cast<u8>(lhs) & static_cast<u8>(rhs));
+    }
 
     struct AssertMetadata {
         SourceInfo source_info;

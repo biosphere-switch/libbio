@@ -12,8 +12,14 @@ namespace bio::service::sm {
         char name[NameLength];
         u64 value;
 
+        constexpr ServiceName() : value(0) {}
+
         inline constexpr u64 GetValue() {
             return this->value;
+        }
+
+        inline constexpr bool IsValid() {
+            return this->value > 0;
         }
 
         static inline constexpr ServiceName Encode(const char *name) {
@@ -30,6 +36,8 @@ namespace bio::service::sm {
 
     };
     static_assert(sizeof(ServiceName) == ServiceName::NameLength, "Invalid");
+
+    static inline constexpr ServiceName InvalidServiceName = {};
 
     class UserNamedPort : public ipc::client::NamedPort {
 
@@ -61,6 +69,10 @@ namespace bio::service::sm {
 
             inline Result GetService(ServiceName name, ipc::client::Session &out_session) {
                 return this->session.SendRequestCommand<1>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutSession<0>(out_session));
+            }
+
+            inline Result RegisterService(ServiceName name, bool is_light, i32 max_sessions, u32 &out_handle) {
+                return this->session.SendRequestCommand<2>(ipc::client::In<u64>(name.GetValue()), ipc::client::In<bool>(is_light), ipc::client::In<i32>(max_sessions), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_handle));
             }
 
             inline Result AtmosphereHasService(ServiceName name, bool &out_has) {

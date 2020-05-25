@@ -39,7 +39,6 @@ namespace bio::os {
     }
 
     inline Thread &GetCurrentThread() {
-        DEBUG_LOG_FMT("Current thread: %p", GetThreadLocalStorage<os::ThreadLocalStorage>()->thread_ref);
         return *GetThreadLocalStorage<os::ThreadLocalStorage>()->thread_ref;
     }
 

@@ -3,6 +3,7 @@
 #include <bio/util/util_String.hpp>
 #include <bio/svc/svc_Impl.hpp>
 #include <bio/mem/mem_SharedObject.hpp>
+#include <bio/os/os_Results.hpp>
 
 namespace bio::os {
 

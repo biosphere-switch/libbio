@@ -6,7 +6,10 @@ namespace bio::svc {
 
     using Handle = u32;
 
+    constexpr Handle CurrentThreadPseudoHandle = 0xFFFF8000;
     constexpr Handle CurrentProcessPseudoHandle = 0xFFFF8001;
+
+    constexpr u64 IndefiniteWait = -1;
 
     struct MemoryInfo {
         u64 address;
@@ -29,6 +32,7 @@ namespace bio::svc {
     void SleepThread(i64 nano); // 0x0B
     Result GetThreadPriority(i32 &out_priority, Handle handle); // 0x0C
     Result CloseHandle(Handle handle); // 0x16
+    Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, u64 timeout); // 0x18
     Result ArbitrateLock(u32 wait_tag, u32 *tag_location, u32 self_tag); // 0x1A
     Result ArbitrateUnlock(u32 *tag_location); // 0x1B
     Result ConnectToNamedPort(Handle &out_handle, const char *name); // 0x1F
@@ -38,6 +42,10 @@ namespace bio::svc {
     Result Break(u32 break_reason, u64 inval1, u64 inval2); // 0x26
     Result OutputDebugString(const char *str, u64 len); // 0x27
     Result GetInfo(u64 &out_info, u32 id_0, Handle handle, u64 id_1); // 0x29
+    Result CreateSession(u32 &out_server_handle, u32 &out_client_handle, u32 unk0, u64 unk1); // 0x40
+    Result AcceptSession(u32 &out_session_handle, u32 port_handle); // 0x41
+    Result ReplyAndReceive(i32 &out_index, const u32 *handles, i32 handle_count, u32 reply_target, u64 timeout); // 0x43
+    Result ManageNamedPort(u32 &out_handle, const char *name, i32 max_sessions); // 0x71
 
 }
 

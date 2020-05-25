@@ -35,7 +35,7 @@ namespace bio::service::set {
 
             public:
                 inline Result GetFirmwareVersion(FirmwareVersion &out_version) {
-                    return this->session.SendRequestCommand<3>(ipc::client::Buffer(&out_version, sizeof(out_version), ipc::client::BufferAttribute::Out | ipc::client::BufferAttribute::Pointer | ipc::client::BufferAttribute::FixedSize));
+                    return this->session.SendRequestCommand<3>(ipc::client::Buffer(&out_version, sizeof(out_version), ipc::BufferAttribute::Out | ipc::BufferAttribute::Pointer | ipc::BufferAttribute::FixedSize));
                 }
 
         };
