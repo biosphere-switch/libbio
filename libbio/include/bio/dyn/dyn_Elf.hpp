@@ -9,6 +9,7 @@ namespace bio::dyn {
     namespace elf {
 
         enum class Tag : i64 {
+            Needed = 1,
             PltRelSize = 2,
             Hash = 4,
             StrTab = 5,

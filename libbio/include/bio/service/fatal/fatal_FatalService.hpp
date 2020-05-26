@@ -17,7 +17,7 @@ namespace bio::service::fatal {
 
         public:
             inline Result ThrowWithPolicy(Result rc, Policy mode) {
-                return this->session.SendRequestCommand<1>(ipc::client::InProcessId(), ipc::client::In<u32>(rc.GetValue()), ipc::client::In<u32>(static_cast<u32>(mode)));
+                return this->session.SendRequestCommand<1>(ipc::client::In<u32>(rc.GetValue()), ipc::client::In<u32>(static_cast<u32>(mode)), ipc::client::InProcessId());
             }
 
     };

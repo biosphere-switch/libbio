@@ -2,7 +2,7 @@
 #pragma once
 #include <bio/dyn/dyn_Relocation.hpp>
 #include <bio/mem/mem_SharedObject.hpp>
-#include <bio/util/util_Templates.hpp>
+#include <bio/util/util_List.hpp>
 
 namespace bio::dyn {
 
@@ -64,7 +64,7 @@ namespace bio::dyn {
         private:
             ModuleState state;
             ModuleInput input;
-            // std::vector<Module> dependencies;
+            // util::LinkedList<Module> dependencies;
             elf::Dyn *dynamic;
             elf::Sym *symtab;
             char *strtab;

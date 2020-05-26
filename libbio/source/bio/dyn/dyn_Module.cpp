@@ -1,16 +1,13 @@
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/dyn/dyn_Results.hpp>
+#include <bio/service/sm/sm_UserNamedPort.hpp>
 #include <bio/service/ro/ro_RoService.hpp>
 
 namespace bio::dyn {
 
     namespace {
 
-        // TODO: switch to a dynamic array
-
-        constexpr u32 MaxModules = 8;
-
-        util::SizedArray<mem::SharedObject<Module>, MaxModules> g_Modules;
+        util::LinkedList<mem::SharedObject<Module>> g_Modules;
 
     }
     
@@ -20,7 +17,7 @@ namespace bio::dyn {
         BIO_RES_TRY(mod->LoadRaw(base));
         BIO_RES_TRY(mod->LoadBase());
 
-        g_Modules.Push(mod);
+        g_Modules.PushBack(mod);
         out_module = mod;
         return ResultSuccess;
     }
@@ -31,7 +28,7 @@ namespace bio::dyn {
         BIO_RES_TRY(mod->LoadFromNro(nro_buf, is_global));
         BIO_RES_TRY(mod->LoadBase());
 
-        g_Modules.Push(mod);
+        g_Modules.PushBack(mod);
         out_module = mod;
         return ResultSuccess;
     }
@@ -45,43 +42,45 @@ namespace bio::dyn {
     }
 
     Result Module::LoadFromNro(void *nro_data, bool is_global) {
-        BIO_RET_UNLESS(service::ro::IsInitialized(), result::ResultRoNotInitialized);
-        BIO_RET_UNLESS(mem::IsAddressAligned(nro_data, mem::PageAlignment), result::ResultInvalidInput);
+        BIO_SERVICE_DO_WITH(ro, _ro_rc, {
+            BIO_RES_TRY(_ro_rc);
+            BIO_RET_UNLESS(mem::IsAddressAligned(nro_data, mem::PageAlignment), result::ResultInvalidInput);
 
-        auto nro_header = reinterpret_cast<nro::Header*>(nro_data);
-        const auto nro_size = nro_header->size;
-        const auto bss_size = nro_header->bss_size;
-        BIO_RET_UNLESS(bss_size > 0, result::ResultInvalidInput);
+            auto nro_header = reinterpret_cast<nro::Header*>(nro_data);
+            const auto nro_size = nro_header->size;
+            const auto bss_size = nro_header->bss_size;
+            BIO_RET_UNLESS(bss_size > 0, result::ResultInvalidInput);
 
-        // TODO: find a proper way to get the program ID on >3.0.0, when this svc info type didn't exist
-        // Default to album/hbl in case we aren't able to get it
-        u64 cur_program_id = 0x010000000000100D;
-        svc::GetInfo(cur_program_id, 18, svc::CurrentProcessPseudoHandle, 0);
+            // TODO: find a proper way to get the program ID on >3.0.0, when this svc info type didn't exist
+            // Default to album/hbl in case we aren't able to get it
+            u64 cur_program_id = 0x010000000000100D;
+            svc::GetInfo(cur_program_id, 18, svc::CurrentProcessPseudoHandle, 0);
 
-        const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
-    
-        void *nrr_buf;
-        BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
+            const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
+        
+            void *nrr_buf;
+            BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
 
-        nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
-        nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
+            nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
+            nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
 
-        void *bss_buf;
-        BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
+            void *bss_buf;
+            BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
 
-        BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
+            BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
 
-        u64 nro_addr = 0;
-        BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_size, bss_buf, bss_size, nro_addr));
+            u64 nro_addr = 0;
+            BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_size, bss_buf, bss_size, nro_addr));
 
-        this->input.nro = nro_data;
-        this->input.nrr = nrr_buf;
-        this->input.bss = bss_buf;
-        this->input.is_nro = true;
-        this->input.is_global = is_global;
-        this->input.has_run_basic_relocations = false;
-        this->input.base = reinterpret_cast<void*>(nro_addr);
-        this->state = ModuleState::Queued;
+            this->input.nro = nro_data;
+            this->input.nrr = nrr_buf;
+            this->input.bss = bss_buf;
+            this->input.is_nro = true;
+            this->input.is_global = is_global;
+            this->input.has_run_basic_relocations = false;
+            this->input.base = reinterpret_cast<void*>(nro_addr);
+            this->state = ModuleState::Queued;
+        });
         return ResultSuccess;
     }
 
@@ -126,11 +125,11 @@ namespace bio::dyn {
             BIO_RET_UNLESS(syment == sizeof(elf::Sym), result::ResultInvalidSymEnt);
         }
 
-        // TODO: support dependencies
-
+        // TODO: support dependencies?
+        
         /*
         for(auto walker = this->dynamic; walker->tag != 0; walker++) {
-            if(walker->tag == 1) {
+            if(static_cast<elf::Tag>(walker->tag) == elf::Tag::Needed) {
                 
             }
         }
@@ -183,7 +182,8 @@ namespace bio::dyn {
         }
 
         /*
-        for(auto &dep: this->dependencies) {
+        for(u32 i = 0; i < this->dependencies.GetSize(); i++) {
+            auto &dep = this->dependencies.GetAt(i);
             rc = dep.TryResolveSymbol(find_name, hash, def, defining_module_ptr, false);
             BIO_RES_TRY_EXCEPT(rc, result::ResultCouldNotResolveSymbol);
             if(rc.IsSuccess()) {
@@ -191,7 +191,8 @@ namespace bio::dyn {
             }
         }
 
-        for(auto &dep: this->dependencies) {
+        for(u32 i = 0; i < this->dependencies.GetSize(); i++) {
+            auto &dep = this->dependencies.GetAt(i);
             rc = dep.ResolveDependencySymbol(find_name, def, defining_module_ptr);
             BIO_RES_TRY_EXCEPT(rc, result::ResultCouldNotResolveSymbol);
             if(rc.IsSuccess()) {
@@ -252,7 +253,7 @@ namespace bio::dyn {
 
         auto raw_table8 = reinterpret_cast<u8*>(raw_table);
         for(u64 offset = 0; offset < table_size; offset += ent_size) {
-            elf::Rela rela = {};
+            auto rela = mem::Zeroed<elf::Rela>();
             switch(table_type) {
                 case elf::Tag::RelaOffset: {
                     auto rela_buf = reinterpret_cast<elf::Rela*>(raw_table8 + offset);

@@ -7,6 +7,7 @@
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/service/service_Services.hpp>
 #include <bio/dyn/dyn_Module.hpp>
+#include <bio/util/util_List.hpp>
 
 using namespace bio;
 
@@ -90,8 +91,8 @@ namespace {
 
 }
 
-void Main() {
-    BIO_DIAG_LOG("Main()");
+void IpcServerMain() {
+    BIO_DIAG_LOG("IpcServerMain()");
 
     mem::SharedObject<os::ThreadObject> client;
     BIO_DIAG_RES_ASSERT(os::ThreadObject::Create(&clientThread, nullptr, 0x2000, "ClientThread", client));
@@ -103,4 +104,10 @@ void Main() {
     man.LoopProcess();
 
     BIO_DIAG_LOG("WTF?");
+}
+
+void Main() {
+    BIO_DIAG_LOG("Main()");
+    ((void(*)())0xCAFEBEEF0000BABE)();
+    BIO_DIAG_LOG("After crash");
 }

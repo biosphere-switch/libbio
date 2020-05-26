@@ -10,9 +10,11 @@ namespace bio::ipc::client {
         auto tls = os::GetThreadLocalStorage<u8>();
         auto header = reinterpret_cast<CommandHeader*>(tls);
 
+        /*
         if(ctx.in.send_process_id) {
             data_size += sizeof(u64);
         }
+        */
 
         header->command_type = static_cast<u32>(type);
         header->send_static_count = static_cast<u32>(ctx.send_statics.GetSize());

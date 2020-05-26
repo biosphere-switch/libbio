@@ -1,10 +1,10 @@
 
+#include <bio/crt0/crt0_Types.hpp>
 #include <bio/crt0/crt0_Exit.hpp>
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/os/os_Tls.hpp>
 #include <bio/hbl/hbl_HbAbi.hpp>
-
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/service/service_Services.hpp>
@@ -13,16 +13,58 @@
 
 void Main();
 
+/// This is for \ref ThreadExceptionDump error_desc.
+typedef enum {
+    ThreadExceptionDesc_InstructionAbort = 0x100, ///< Instruction abort
+    ThreadExceptionDesc_MisalignedPC     = 0x102, ///< Misaligned PC
+    ThreadExceptionDesc_MisalignedSP     = 0x103, ///< Misaligned SP
+    ThreadExceptionDesc_SError           = 0x106, ///< SError [not in 1.0.0?]
+    ThreadExceptionDesc_BadSVC           = 0x301, ///< Bad SVC
+    ThreadExceptionDesc_Trap             = 0x104, ///< Uncategorized, CP15RTTrap, CP15RRTTrap, CP14RTTrap, CP14RRTTrap, IllegalState, SystemRegisterTrap
+    ThreadExceptionDesc_Other            = 0x101, ///< None of the above, EC <= 0x34 and not a breakpoint
+} ThreadExceptionDesc;
+
+union CpuRegister {
+    u64 x;
+    u32 w;
+    u32 r;
+};
+static_assert(sizeof(CpuRegister) == 8);
+
+struct ExceptionFrame {
+    CpuRegister gprs[9];
+    CpuRegister lr;
+    CpuRegister sp;
+    CpuRegister pc;
+    u32 pstate;
+    u32 afsr0;
+    u32 afsr1;
+    u32 esr;
+    u64 far;
+};
+static_assert(sizeof(ExceptionFrame) == 0x78);
+
+struct TLS {
+    u8 stack[0x148];
+    ExceptionFrame frame;
+};
+
 namespace bio::crt0 {
 
     extern ExitFunction g_ExitFunction;
 
     // Will be used if hbl doesn't give us a heap
-
     __attribute__((weak))
     u64 g_HeapSize = 0x20000000;
 
-    // Similar to rtld's functionality
+    // Can be used to handle exceptions
+    __attribute__((weak))
+    void ExceptionHandler(ExceptionDescription desc) {
+        // TODO: any IPC here seems to fail - why?
+        // By default
+        svc::ReturnFromException(os::result::ResultUnhandledException);
+        while(true) {}
+    }
 
     namespace {
 
@@ -63,12 +105,20 @@ namespace bio::crt0 {
     // Similar to offical rtld functionality
 
     __attribute__((weak))
-    void Entry(void *context_args_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction exit_lr, void *bss_start, void *bss_end) {
+    void Entry(void *arg_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction exit_lr, void *bss_start, void *bss_end) {
         // Clear .bss section
         ClearBss(bss_start, bss_end);
 
         // Relocate ourselves
         dyn::RelocateModule(aslr_base_address);
+        
+        const auto has_exception = (arg_ptr != nullptr) && (main_thread_handle_v != -1);
+        const auto is_hbl_nro = (arg_ptr != nullptr) && (main_thread_handle_v == -1);
+
+        if(has_exception) {
+            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(arg_ptr));
+            ExceptionHandler(desc);
+        }
 
         DEBUG_LOG("Ohayo");
         auto main_thread_handle = static_cast<u32>(main_thread_handle_v);
@@ -78,9 +128,8 @@ namespace bio::crt0 {
 
         void *heap_address = nullptr;
 
-        // Handle hbloader context if we were given it (aka if we were launched by hbl)
-        if(context_args_ptr != nullptr) {
-            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(context_args_ptr);
+        if(is_hbl_nro) {
+            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(arg_ptr);
             while(true) {
                 auto key = static_cast<hbl::ABIConfigKey>(arg->key);
                 if(key == hbl::ABIConfigKey::EOL) {

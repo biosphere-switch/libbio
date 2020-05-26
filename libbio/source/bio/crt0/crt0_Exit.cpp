@@ -1,14 +1,14 @@
 #include <bio/crt0/crt0_Exit.hpp>
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/svc/svc_Impl.hpp>
-#include <bio/util/util_Array.hpp>
+#include <bio/util/util_List.hpp>
 
 namespace bio::crt0 {
 
     namespace {
 
         struct ExitEntry {
-            void(*fn)(void*);
+            AtExitFunction fn;
             void *args;
 
             inline void Run() {
@@ -19,26 +19,25 @@ namespace bio::crt0 {
 
         };
 
-        // TODO: switch to a dynamic array
-
-        constexpr u32 MaxExitEntries = 32;
-
-        util::SizedArray<ExitEntry, MaxExitEntries> g_ExitEntries;
+        util::LinkedList<ExitEntry> g_ExitEntries;
 
         void ProcessAtExitEntries() {
-            while(g_ExitEntries.Any()) {
-                auto &entry = g_ExitEntries.Back();
+            for(u32 i = 0; i < g_ExitEntries.GetSize(); i++) {
+                auto &entry = g_ExitEntries.GetAt(i);
+                DEBUG_LOG_FMT("Exit entry: %p", entry.fn);
                 entry.Run();
-                g_ExitEntries.Pop();
             }
+            g_ExitEntries.Clear();
         }
 
     }
 
-    ExitFunction g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
+    // Use svc::ExitProcess by default
+
+    auto g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
 
     void RegisterAtExit(AtExitFunction fn, void *arg) {
-        g_ExitEntries.Push({ fn, arg });
+        g_ExitEntries.PushBack({ fn, arg });
     }
 
     void Exit(i32 error_code) {

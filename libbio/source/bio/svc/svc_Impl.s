@@ -240,7 +240,7 @@ DEF_SVC _ZN3bio3svc17OutputDebugStringEPKcy
 	ret
 END_DEF_SVC
 
-DEF_SVC svcReturnFromException
+DEF_SVC _ZN3bio3svc19ReturnFromExceptionENS_6ResultE
 	svc 0x28
 	ret
 END_DEF_SVC

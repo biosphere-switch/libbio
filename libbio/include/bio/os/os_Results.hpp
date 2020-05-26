@@ -8,5 +8,6 @@ namespace bio::os::result {
 
     BIO_RDEF_LEGACY_DEFINE_RES(TimeOut, 117);
     BIO_RDEF_LEGACY_DEFINE_RES(OperationCancelled, 118);
+    BIO_RDEF_LEGACY_DEFINE_RES(UnhandledException, 124);
 
 }
