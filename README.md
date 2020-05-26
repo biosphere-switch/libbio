@@ -16,6 +16,8 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 - Fully implement CRT0 initialization: homebrew API processing, argv
 
+- Extend exception handling: get registers like libnx does, etc.
+
 - Add several services (some interesting/relevant ones: applet, ns, account...)
 
 - Implement sync-related types: condition variable
@@ -45,6 +47,8 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 - Implemented threading (almost completely)
 
 - Implemented an assertion system (lm, fatal, svcBreak, process exit)
+
+- Basic exception handling support
 
 ## Future plans (maybe)
 
