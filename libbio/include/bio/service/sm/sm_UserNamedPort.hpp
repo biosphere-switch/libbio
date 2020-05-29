@@ -39,6 +39,14 @@ namespace bio::service::sm {
 
     static inline constexpr ServiceName InvalidServiceName = {};
 
+    struct MitmProcessInfo {
+        u64 process_id;
+        u64 program_id;
+        u64 keys_held;
+        u64 override_flags;
+    };
+    static_assert(sizeof(MitmProcessInfo) == 0x20);
+
     class UserNamedPort : public ipc::client::NamedPort {
 
         private:
@@ -77,6 +85,18 @@ namespace bio::service::sm {
 
             inline Result AtmosphereHasService(ServiceName name, bool &out_has) {
                 return this->session.SendRequestCommand<65100>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<bool>(out_has));
+            }
+
+            inline Result AtmosphereInstallMitm(ServiceName name, u32 &out_mitm_handle, u32 &out_query_handle) {
+                return this->session.SendRequestCommand<65000>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_mitm_handle), ipc::client::OutHandle<ipc::HandleMode::Move, 1>(out_query_handle));
+            }
+
+            inline Result AtmosphereUninstallMitm(ServiceName name) {
+                return this->session.SendRequestCommand<65001>(ipc::client::In<u64>(name.GetValue()));
+            }
+
+            inline Result AtmosphereAcknowledgeMitmSession(ServiceName name, MitmProcessInfo &out_info, u32 &out_handle) {
+                return this->session.SendRequestCommand<65003>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<MitmProcessInfo>(out_info), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_handle));
             }
 
     };

@@ -13,42 +13,6 @@
 
 void Main();
 
-/// This is for \ref ThreadExceptionDump error_desc.
-typedef enum {
-    ThreadExceptionDesc_InstructionAbort = 0x100, ///< Instruction abort
-    ThreadExceptionDesc_MisalignedPC     = 0x102, ///< Misaligned PC
-    ThreadExceptionDesc_MisalignedSP     = 0x103, ///< Misaligned SP
-    ThreadExceptionDesc_SError           = 0x106, ///< SError [not in 1.0.0?]
-    ThreadExceptionDesc_BadSVC           = 0x301, ///< Bad SVC
-    ThreadExceptionDesc_Trap             = 0x104, ///< Uncategorized, CP15RTTrap, CP15RRTTrap, CP14RTTrap, CP14RRTTrap, IllegalState, SystemRegisterTrap
-    ThreadExceptionDesc_Other            = 0x101, ///< None of the above, EC <= 0x34 and not a breakpoint
-} ThreadExceptionDesc;
-
-union CpuRegister {
-    u64 x;
-    u32 w;
-    u32 r;
-};
-static_assert(sizeof(CpuRegister) == 8);
-
-struct ExceptionFrame {
-    CpuRegister gprs[9];
-    CpuRegister lr;
-    CpuRegister sp;
-    CpuRegister pc;
-    u32 pstate;
-    u32 afsr0;
-    u32 afsr1;
-    u32 esr;
-    u64 far;
-};
-static_assert(sizeof(ExceptionFrame) == 0x78);
-
-struct TLS {
-    u8 stack[0x148];
-    ExceptionFrame frame;
-};
-
 namespace bio::crt0 {
 
     extern ExitFunction g_ExitFunction;
@@ -64,6 +28,18 @@ namespace bio::crt0 {
         // By default
         svc::ReturnFromException(os::result::ResultUnhandledException);
         while(true) {}
+    }
+
+    __attribute__((weak))
+    Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
+        if(heap_address == nullptr) {
+            BIO_RES_TRY(svc::SetHeapSize(out_heap_address, heap_size));
+        }
+        else {
+            out_heap_address = heap_address;
+        }
+        out_size = heap_size;
+        return ResultSuccess;
     }
 
     namespace {
@@ -152,16 +128,15 @@ namespace bio::crt0 {
             }
         }
 
-        if(heap_address == nullptr) {
-            // We weren't given override heap - set it ourselves
-            BIO_DIAG_RES_ASSERT(svc::SetHeapSize(heap_address, g_HeapSize));
-        }
+        void *actual_heap_address;
+        u64 actual_heap_size;
+        BIO_DIAG_RES_ASSERT(InitializeHeap(heap_address, g_HeapSize, actual_heap_address, actual_heap_size));
 
         // Prepare TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
 
         // Initialize memory allocator
-        mem::Initialize(heap_address, g_HeapSize);
+        mem::Initialize(actual_heap_address, actual_heap_size);
 
         // Register self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);

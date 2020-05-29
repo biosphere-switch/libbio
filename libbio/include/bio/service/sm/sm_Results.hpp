@@ -8,4 +8,6 @@ namespace bio::service::sm::result {
 
     BIO_RDEF_LEGACY_DEFINE_RES(NotInitialized, 2);
 
+    BIO_RDEF_LEGACY_DEFINE_RES(AtmosphereMitmShouldForwardToSession, 1000);
+
 }

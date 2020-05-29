@@ -9,7 +9,7 @@ namespace bio::svc {
     constexpr Handle CurrentThreadPseudoHandle = 0xFFFF8000;
     constexpr Handle CurrentProcessPseudoHandle = 0xFFFF8001;
 
-    constexpr u64 IndefiniteWait = -1;
+    constexpr i64 IndefiniteWait = 0xFFFF'FFFF'FFFF'FFFF;
 
     struct MemoryInfo {
         u64 address;
@@ -29,10 +29,10 @@ namespace bio::svc {
     Result CreateThread(Handle &out_handle, void *entry, void *entry_arg, void *stack_top, i32 priority, i32 cpu_id); // 0x08
     Result StartThread(Handle handle); // 0x09
     void __attribute__((noreturn)) ExitThread(); // 0x0A
-    void SleepThread(i64 nano); // 0x0B
+    void SleepThread(i64 timeout_ns); // 0x0B
     Result GetThreadPriority(i32 &out_priority, Handle handle); // 0x0C
     Result CloseHandle(Handle handle); // 0x16
-    Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, u64 timeout); // 0x18
+    Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, i64 timeout_ns); // 0x18
     Result ArbitrateLock(u32 wait_tag, u32 *tag_location, u32 self_tag); // 0x1A
     Result ArbitrateUnlock(u32 *tag_location); // 0x1B
     Result ConnectToNamedPort(Handle &out_handle, const char *name); // 0x1F

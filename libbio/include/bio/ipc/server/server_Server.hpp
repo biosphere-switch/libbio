@@ -29,7 +29,7 @@ namespace bio::ipc::server {
             }
 
             template<typename ...Args>
-            void RequestCommandEnd(CommandContext &ctx, Result rc, Args &&...args) {
+            Result RequestCommandEnd(CommandContext &ctx, Result rc, Args &&...args) {
                 if(rc.IsSuccess()) {
                     (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeResponseWrite), ...);
                     WriteRequestCommandResponseOnTls(ctx, rc);
@@ -38,12 +38,19 @@ namespace bio::ipc::server {
                 else {
                     WriteRequestCommandResponseOnTls(ctx, rc);
                 }
+                return rc;
             }
 
     };
 
+    template<typename T, typename ...Args>
+    concept IsServer = requires(T s, CommandContext &ctx, Result rc, Args &&...args) {
+        { s.RequestCommandBegin(ctx, args...) } -> util::SameAs<void>;
+        { s.RequestCommandEnd(ctx, rc, args...) } -> util::SameAs<Result>;
+    };
+
     template<typename S>
-    using CommandHandlerFunction = void(S::*)(CommandContext&);
+    using CommandHandlerFunction = Result(S::*)(CommandContext&);
 
     template<typename S>
     struct RequestCommandHandler {
@@ -57,6 +64,82 @@ namespace bio::ipc::server {
 
     template<typename S>
     constexpr auto ServerCommandHandleCount = sizeof(S::template Handlers<S>) / sizeof(RequestCommandHandler<S>);
+
+    // Service
+
+    class Service : public Server {
+
+        // Sample implementation - these MUST be implemented from derived types
+
+        /*
+        public:
+            static inline constexpr const char *GetName() {
+                return "srv";
+            }
+
+            static inline constexpr i32 GetMaxSessions() {
+                return 0x10;
+            }
+        */
+
+    };
+
+    template<typename T>
+    concept IsService = IsServer<T> && requires(T) {
+        { T::GetName() } -> util::SameAs<const char*>;
+        { T::GetMaxSessions() } -> util::SameAs<i32>;
+    };
+
+    class MitmService : public Server {
+
+        // Sample implementation - these MUST be implemented from derived types
+
+        /*
+        public:
+            static inline constexpr const char *GetName() {
+                return "srv";
+            }
+
+            static inline constexpr bool ShouldMitm(const service::sm::MitmProcessInfo &info) {
+                return true;
+            }
+        */
+
+    };
+
+    template<typename T>
+    concept IsMitmService = IsServer<T> && requires(T, const service::sm::MitmProcessInfo &info) {
+        { T::GetName() } -> util::SameAs<const char*>;
+        { T::ShouldMitm(info) } -> util::SameAs<bool>;
+    };
+
+    // Named port (like sm:)
+
+    class NamedPort : public Server {
+
+        // Sample implementation - these MUST be implemented from derived types
+
+        /*
+        public:
+            static inline constexpr const char *GetPortName() {
+                return "port";
+            }
+
+            static inline constexpr i32 GetMaxSessions() {
+                return 0x10;
+            }
+        */
+
+    };
+
+    template<typename T>
+    concept IsNamedPort = IsServer<T> && requires(T) {
+        { T::GetPortName() } -> util::SameAs<const char*>;
+        { T::GetMaxSessions() } -> util::SameAs<i32>;
+    };
+
+    template<typename T>
+    concept IsOnlyServer = IsServer<T> && !IsService<T> && !IsMitmService<T> && !IsNamedPort<T>;
 
 };
 

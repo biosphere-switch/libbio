@@ -86,19 +86,16 @@ namespace bio::ipc::client {
         inline void Close() {
             if(this->IsValid()) {
                 if(this->IsDomain()) {
-                    DEBUG_LOG_FMT("Closing as domain: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     CommandContext ctx(this->GetBase());
                     WriteRequestCommandOnTls(ctx, NoRequestId, DomainCommandType::Close);
                     svc::SendSyncRequest(this->handle);
                 }
                 else if(this->owns_handle) {
-                    DEBUG_LOG_FMT("Closing as handle: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     CommandContext ctx(this->GetBase());
                     WriteCloseCommandOnTls(ctx);
                     svc::SendSyncRequest(this->handle);
                 }
                 if(this->owns_handle) {
-                    DEBUG_LOG_FMT("Closing handle: object ID: 0x%X, handle: 0x%X", this->object_id, this->handle);
                     svc::CloseHandle(this->handle);
                 }
                 this->object_id = InvalidObjectId;

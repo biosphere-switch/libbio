@@ -145,7 +145,7 @@ DEF_SVC svcResetSignal
 	ret
 END_DEF_SVC
 
-DEF_SVC _ZN3bio3svc19WaitSynchronizationERiPKjiy
+DEF_SVC _ZN3bio3svc19WaitSynchronizationERiPKjix
 	str x0, [sp, #-16]!
 	svc 0x18
 	ldr x2, [sp], #16
