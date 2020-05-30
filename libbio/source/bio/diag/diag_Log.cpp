@@ -172,7 +172,7 @@ namespace bio::diag {
             head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
             svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
             auto &cur_thr = os::GetCurrentThread();
-            head_packet->header.thread_id = cur_thr.GetId();
+            BIO_RES_TRY(cur_thr.GetId(head_packet->header.thread_id));
 
             auto tail_packet = &packets[packet_count - 1];
             tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);

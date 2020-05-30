@@ -87,13 +87,14 @@ namespace bio::ipc::server {
                 // AKA process a request from a session.
                 auto &handle = this->handles.GetAt(index);
                 auto &fwd_handle = this->fwd_handles.GetAt(index);
+
                 i32 tmp_idx;
                 BIO_RES_TRY(svc::ReplyAndReceive(tmp_idx, &handle.handle, 1, 0, svc::IndefiniteWait));
 
-                u32 tls_ipc_buf_backup[0x40];
+                u8 ipc_buf_backup[0x100];
                 if(this->is_mitm) {
-                    auto tls = os::GetThreadLocalStorage<os::ThreadLocalStorage>();
-                    mem::Copy(tls_ipc_buf_backup, tls->ipc_buffer, sizeof(tls_ipc_buf_backup));
+                    auto ipc_buf = GetIpcBuffer();
+                    mem::Copy(ipc_buf_backup, ipc_buf, sizeof(ipc_buf_backup));
                 }
 
                 auto should_close_session = false;
@@ -101,35 +102,35 @@ namespace bio::ipc::server {
 
                 ipc::CommandContext ctx(base);
                 auto type = ipc::CommandType::Invalid;
-                ReadCommandFromTls(ctx, type);
+                ReadCommandFromIpcBuffer(ctx, type);
 
                 switch(type) {
                     case ipc::CommandType::Request: {
                         u32 rq_id;
-                        auto rc = ReadRequestCommandFromTls(ctx, rq_id);
+                        auto rc = ReadRequestCommandFromIpcBuffer(ctx, rq_id);
                         if(rc.IsSuccess()) {
                             auto rc = this->HandleRequestCommand(rq_id, ctx);
                             if(this->is_mitm) {
                                 if((rc == 0xF601) || (rc == service::sm::result::ResultAtmosphereMitmShouldForwardToSession)) {
                                     // Copy back temp TLS, and let the original session take care of the command
-                                    auto tls = os::GetThreadLocalStorage<os::ThreadLocalStorage>();
-                                    mem::Copy(tls->ipc_buffer, tls_ipc_buf_backup, sizeof(tls_ipc_buf_backup));
+                                    auto ipc_buf = GetIpcBuffer();
+                                    mem::Copy(ipc_buf, ipc_buf_backup, sizeof(ipc_buf_backup));
                                     BIO_RES_TRY(svc::SendSyncRequest(fwd_handle));
                                 }
                             }
                         }
                         else {
-                            WriteRequestCommandResponseOnTls(ctx, rc);
+                            WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
                         }
                         break;
                     }
                     case ipc::CommandType::Close: {
                         should_close_session = true;
-                        WriteCommandResponseOnTls(ctx, CommandType::Close, 0);
+                        WriteCommandResponseOnIpcBuffer(ctx, CommandType::Close, 0);
                         break;
                     }
                     default: {
-                        WriteRequestCommandResponseOnTls(ctx, 0xAAAA);
+                        WriteRequestCommandResponseOnIpcBuffer(ctx, 0xAAAA);
                         break;
                     }
                 }
@@ -147,6 +148,7 @@ namespace bio::ipc::server {
             Result ProcessServerHandle(i32 index) {
                 // AKA add/accept connection with a new session.
                 auto &handle = this->handles.GetAt(index);
+
                 u32 new_handle = 0;
                 BIO_RES_TRY(svc::AcceptSession(new_handle, handle.handle));
 
@@ -284,8 +286,8 @@ namespace bio::ipc::server {
                     BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
                 });
 
-                BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
                 BIO_RES_TRY(this->RegisterSession<MitmQueryServer>(mitm_query_handle, &S::ShouldMitm));
+                BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
 
                 return ResultSuccess;
             }
@@ -315,6 +317,7 @@ namespace bio::ipc::server {
                     auto &server = this->servers.GetAt(i);
                     auto idx = server->GetHandleIndex(signaled_handle);
                     if(idx != ServerObject::InvalidIndex) {
+                        // The handle belongs to the server object.
                         server->ProcessSignaledHandle(idx);
                         break;
                     }

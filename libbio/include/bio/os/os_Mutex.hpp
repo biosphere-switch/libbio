@@ -10,7 +10,7 @@ namespace bio::os {
         u32 counter;
         u32 thread_handle;
 
-        Mutex(bool recursive = false) : handle_value(InvalidHandle), recursive(recursive), counter(0), thread_handle(InvalidHandle) {}
+        constexpr Mutex(bool recursive = false) : handle_value(InvalidHandle), recursive(recursive), counter(0), thread_handle(InvalidHandle) {}
 
         void Lock();
 

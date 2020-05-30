@@ -31,7 +31,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            WriteRequestCommandOnTls(ctx, RequestId, DomainCommandType::SendMessage);
+            WriteRequestCommandOnIpcBuffer(ctx, RequestId, DomainCommandType::SendMessage);
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
@@ -39,7 +39,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            BIO_RES_TRY(ReadRequestCommandResponseFromTls(ctx));
+            BIO_RES_TRY(ReadRequestCommandResponseFromIpcBuffer(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -52,7 +52,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeHeaderInitialization), ...);
             
-            WriteControlCommandOnTls(ctx, RequestId);
+            WriteControlCommandOnIpcBuffer(ctx, RequestId);
             
             (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeRequest), ...);
 
@@ -60,7 +60,7 @@ namespace bio::ipc::client {
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterRequest), ...);
             
-            BIO_RES_TRY(ReadControlCommandResponseFromTls(ctx));
+            BIO_RES_TRY(ReadControlCommandResponseFromIpcBuffer(ctx));
 
             (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseParse), ...);
 
@@ -87,12 +87,12 @@ namespace bio::ipc::client {
             if(this->IsValid()) {
                 if(this->IsDomain()) {
                     CommandContext ctx(this->GetBase());
-                    WriteRequestCommandOnTls(ctx, NoRequestId, DomainCommandType::Close);
+                    WriteRequestCommandOnIpcBuffer(ctx, NoRequestId, DomainCommandType::Close);
                     svc::SendSyncRequest(this->handle);
                 }
                 else if(this->owns_handle) {
                     CommandContext ctx(this->GetBase());
-                    WriteCloseCommandOnTls(ctx);
+                    WriteCloseCommandOnIpcBuffer(ctx);
                     svc::SendSyncRequest(this->handle);
                 }
                 if(this->owns_handle) {

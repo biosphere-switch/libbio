@@ -5,12 +5,11 @@ namespace bio::os {
 
     namespace {
 
-        void ThreadEntry(void *arg) {
-            DEBUG_LOG_FMT("Thread started! ptr: %p", arg);
-            auto thread = reinterpret_cast<Thread*>(arg);
+        void ThreadEntry(void *thread_v) {
+            auto thread = reinterpret_cast<Thread*>(thread_v);
 
             // Set thread in thread context.
-            auto tls = os::GetThreadLocalStorage<os::ThreadLocalStorage>();
+            auto tls = os::GetThreadLocalStorage();
             tls->thread_ref = thread;
 
             // Call actual entry.
@@ -21,29 +20,29 @@ namespace bio::os {
         };
 
     }
+    
+    Result Thread::EnsureCreated(i32 priority, i32 cpu_id) {
+        BIO_RES_TRY(this->EnsureStack());
+        if(this->handle == InvalidHandle) {
+            auto prio = priority;
+            if(prio == InvalidPriority) {
+                // Use current thread's priority.
+                BIO_RES_TRY(os::GetCurrentThread().GetPriority(prio));
+            }
+            BIO_RES_TRY(svc::CreateThread(this->handle, &ThreadEntry, this, reinterpret_cast<u8*>(this->stack) + this->stack_size, prio, cpu_id));
+        }
+        return ResultSuccess;
+    }
 
-    Result ThreadObject::Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, i32 cpu_id, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
+    Result Thread::Create(svc::ThreadEntrypointFunction entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, i32 cpu_id, const char *name, mem::SharedObject<Thread> &out_thread) {
         const bool owns_stack = stack == nullptr;
-        auto stack_ptr = stack;
-        if(owns_stack) {
-            BIO_RES_TRY(mem::PageAllocate(stack_size, stack_ptr));
-        }
-
-        auto prio = priority;
-        if(priority == InvalidPriority) {
-            // Use current thread's priority.
-            prio = os::GetCurrentThread().GetPriority();
-        }
-
-        mem::SharedObject<ThreadObject> thread_obj;
-        BIO_RES_TRY(mem::NewShared<ThreadObject>(thread_obj, entry, entry_arg, stack_ptr, stack_size, owns_stack, priority));
-        auto &thread = thread_obj->GetThread();
         
-        u32 handle = 0;
-        BIO_RES_TRY(svc::CreateThread(handle, reinterpret_cast<void*>(&ThreadEntry), &thread, reinterpret_cast<u8*>(stack_ptr) + stack_size, prio, cpu_id));
+        mem::SharedObject<Thread> thread;
+        BIO_RES_TRY(mem::NewShared<Thread>(thread, entry, entry_arg, stack, stack_size, owns_stack));
+        BIO_RES_TRY(thread->EnsureCreated(priority, cpu_id));
 
-        BIO_RES_TRY(thread.InitializeWith(handle, name, stack_ptr, stack_size, owns_stack));
-        out_thread = util::Move(thread_obj);
+        thread->SetName(name);
+        out_thread = util::Move(thread);
         return ResultSuccess;
     }
 

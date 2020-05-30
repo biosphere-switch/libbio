@@ -49,14 +49,6 @@ namespace bio::service::sm {
 
     class UserNamedPort : public ipc::client::NamedPort {
 
-        private:
-            inline bool CheckCanAccessServices() {
-                ServiceName empty_srv_name = {};
-                ipc::client::Session dummy_srv;
-                auto rc = this->GetService(empty_srv_name, dummy_srv);
-                return rc != result::ResultNotInitialized;
-            }
-
         public:
             using NamedPort::NamedPort;
 
@@ -68,11 +60,7 @@ namespace bio::service::sm {
 
         public:
             inline Result Initialize() {
-                // If we can already access services, avoid calling the command
-                if(this->CheckCanAccessServices()) {
-                    return ResultSuccess;
-                }
-                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(), ipc::client::In<u64>(0), ipc::client::In<u64>(0));
+                return this->session.SendRequestCommand<0>(ipc::client::InProcessId());
             }
 
             inline Result GetService(ServiceName name, ipc::client::Session &out_session) {
@@ -111,22 +99,22 @@ namespace bio::ipc::client::impl {
 
     template<typename S>
     inline Result CreateServiceSession(Session &out_session) {
-        static_assert(ipc::client::IsService<S>, "Invalid input");
+        static_assert(IsService<S>, "Invalid input");
+    
         BIO_SERVICE_DO_WITH(sm, _sm_rc, {
             BIO_RES_TRY(_sm_rc);
-            const auto name = S::GetName();
-            DEBUG_LOG_FMT("sm - Name: '%s'", name);
-            const auto srv_name = service::sm::ServiceName::Encode(name);
+
+            const auto srv_name = service::sm::ServiceName::Encode(S::GetName());
             Session tmp_session;
             BIO_RES_TRY(service::sm::UserNamedPortSession->GetService(srv_name, tmp_session));
+
             if(S::IsDomain) {
                 BIO_RES_TRY(tmp_session.ConvertToDomain());
             }
 
             out_session = tmp_session;
-            return ResultSuccess;
         });
-        return 0xdead;
+        return ResultSuccess;
     }
 
 }

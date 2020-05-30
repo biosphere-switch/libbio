@@ -1,5 +1,5 @@
 #include <bio/mem/mem_Memory.hpp>
-#include <bio/svc/svc_Impl.hpp>
+#include <bio/os/os_Mutex.hpp>
 
 namespace bio::mem {
 
@@ -12,6 +12,7 @@ namespace bio::mem {
 
         u64 g_BaseAddress = 0;
         u64 g_TotalSize = 0;
+        os::Mutex g_AllocationLock;
 
         inline u64 GetActualBaseAddress() {
             return g_BaseAddress + g_AllocationTableSize;
@@ -76,12 +77,14 @@ namespace bio::mem {
     }
 
     void Initialize(void *address, u64 size) {
+        os::ScopedMutexLock lk(g_AllocationLock);
         g_BaseAddress = reinterpret_cast<u64>(address);
         g_TotalSize = size;
         ZeroCount(GetAllocationTableAddress(), GetAllocationTableCount());
     }
 
     Result AllocateAligned(u64 alignment, u64 size, void *&out_addr) {
+        os::ScopedMutexLock lk(g_AllocationLock);
         BIO_RET_UNLESS(size > 0, result::ResultInvalidSize);
 
         // Keep iterating through memory.
@@ -103,15 +106,19 @@ namespace bio::mem {
                 auto base_addr_end = base_addr + size;
                 AllocationInfo *tmp_info = nullptr;
                 if(!IsRegionAllocated(base_addr_end, size, tmp_info)) {
-                    // Also check that we don't go out of memory
-                    if(base_addr_end < (g_BaseAddress + g_TotalSize)) {
-                        // We found a suitable space.
-                        // Create an allocation info entry, and return the address.
-                        empty_alloc_info->address = base_addr;
-                        empty_alloc_info->size = size;
-                        out_addr = reinterpret_cast<void*>(base_addr);
-                        return ResultSuccess;
-                    }
+                    // Check that we don't go out of memory.
+                    BIO_RET_UNLESS(base_addr_end < (g_BaseAddress + g_TotalSize), result::ResultOutOfMemory);
+                    
+                    // We found a suitable space.
+                    // Create an allocation info entry, and return the address.
+                    empty_alloc_info->address = base_addr;
+                    empty_alloc_info->size = size;
+                    out_addr = reinterpret_cast<void*>(base_addr);
+                    return ResultSuccess;
+                }
+                else {
+                    // Continue with the search.
+                    base_addr = base_addr_end;
                 }
             }
             else {
@@ -124,6 +131,7 @@ namespace bio::mem {
     }
 
     void Free(void *ptr) {
+        os::ScopedMutexLock lk(g_AllocationLock);
         auto alloc_table_addr = GetAllocationTableAddress();
         for(u64 i = 0; i < GetAllocationTableCount(); i++) {
             auto alloc_info = &alloc_table_addr[i];
@@ -135,6 +143,7 @@ namespace bio::mem {
     }
 
     bool IsAllocated(void *address) {
+        os::ScopedMutexLock lk(g_AllocationLock);
         AllocationInfo *info = nullptr;
         return IsAddressAllocated(reinterpret_cast<u64>(address), info);
     }
@@ -144,6 +153,7 @@ namespace bio::mem {
     }
 
 	AllocationInfo GetAllocationInfo(void *address) {
+        os::ScopedMutexLock lk(g_AllocationLock);
         AllocationInfo *info = nullptr;
         if(IsAddressAllocated(reinterpret_cast<u64>(address), info)) {
             return *info;

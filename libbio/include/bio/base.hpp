@@ -2,28 +2,28 @@
 #pragma once
 
 using u8 = unsigned char;
-static_assert(sizeof(u8) == 1, "u8");
+static_assert(sizeof(u8) == 1);
 
 using u16 = unsigned short;
-static_assert(sizeof(u16) == 2, "u16");
+static_assert(sizeof(u16) == 2);
 
 using u32 = unsigned int;
-static_assert(sizeof(u32) == 4, "u32");
+static_assert(sizeof(u32) == 4);
 
 using u64 = unsigned long long;
-static_assert(sizeof(u64) == 8, "u64");
+static_assert(sizeof(u64) == 8);
 
 using i8 = signed char;
-static_assert(sizeof(i8) == 1, "i8");
+static_assert(sizeof(i8) == 1);
 
 using i16 = signed short;
-static_assert(sizeof(i16) == 2, "i16");
+static_assert(sizeof(i16) == 2);
 
 using i32 = signed int;
-static_assert(sizeof(i32) == 4, "i32");
+static_assert(sizeof(i32) == 4);
 
 using i64 = signed long long;
-static_assert(sizeof(i64) == 8, "i64");
+static_assert(sizeof(i64) == 8);
 
 // TODO: future aarch32 support?
 
@@ -95,9 +95,9 @@ namespace bio {
         }
 
     };
-    static_assert(sizeof(Result) == 4, "Result");
+    static_assert(sizeof(Result) == 4);
 
-    constexpr Result ResultSuccess = result::impl::SuccessValue;
+    constexpr Result ResultSuccess = Result();
 
     constexpr u32 InvalidHandle = 0;
 

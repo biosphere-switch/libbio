@@ -6,9 +6,9 @@
 
 namespace bio::ipc::client {
 
-    inline void WriteCommandOnTls(CommandContext &ctx, CommandType type, u32 data_size) {
-        auto tls = os::GetThreadLocalStorage<u8>();
-        auto header = reinterpret_cast<CommandHeader*>(tls);
+    inline void WriteCommandOnIpcBuffer(CommandContext &ctx, CommandType type, u32 data_size) {
+        auto ipc_buf = GetIpcBuffer();
+        auto header = reinterpret_cast<CommandHeader*>(ipc_buf);
 
         /*
         if(ctx.in.send_process_id) {
@@ -28,65 +28,65 @@ namespace bio::ipc::client {
         
         const bool special_header = ctx.in.send_process_id || !ctx.in.copy_handles.IsEmpty() || !ctx.in.move_handles.IsEmpty();
         header->has_special_header = static_cast<u32>(special_header);
-        tls += sizeof(CommandHeader);
+        ipc_buf += sizeof(CommandHeader);
 
         if(special_header) {
-            auto special_h = reinterpret_cast<CommandSpecialHeader*>(tls);
+            auto special_h = reinterpret_cast<CommandSpecialHeader*>(ipc_buf);
             special_h->send_process_id = ctx.in.send_process_id;
             special_h->copy_handle_count = static_cast<u32>(ctx.in.copy_handles.GetSize());
             special_h->move_handle_count = static_cast<u32>(ctx.in.move_handles.GetSize());
             special_h->pad = 0;
-            tls += sizeof(CommandSpecialHeader);
+            ipc_buf += sizeof(CommandSpecialHeader);
 
             if(ctx.in.send_process_id) {
-                tls += sizeof(u64);
+                ipc_buf += sizeof(u64);
             }
 
-            tls = WriteSizedArrayToTls(tls, ctx.in.copy_handles);
-            tls = WriteSizedArrayToTls(tls, ctx.in.move_handles);
+            ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.in.copy_handles);
+            ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.in.move_handles);
         }
 
-        tls = WriteSizedArrayToTls(tls, ctx.send_statics);
-        tls = WriteSizedArrayToTls(tls, ctx.send_buffers);
-        tls = WriteSizedArrayToTls(tls, ctx.receive_buffers);
-        tls = WriteSizedArrayToTls(tls, ctx.exchange_buffers);
-        ctx.in.data_words_offset = tls;
-        tls += sizeof(u32) * header->data_word_count;
-        tls = WriteSizedArrayToTls(tls, ctx.receive_statics);
+        ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.send_statics);
+        ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.send_buffers);
+        ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.receive_buffers);
+        ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.exchange_buffers);
+        ctx.in.data_words_offset = ipc_buf;
+        ipc_buf += sizeof(u32) * header->data_word_count;
+        ipc_buf = WriteSizedArrayToBuffer(ipc_buf, ctx.receive_statics);
     }
 
-    inline void ReadCommandResponseFromTls(CommandContext &ctx) {
-        auto tls = os::GetThreadLocalStorage<u8>();
-        auto header = reinterpret_cast<CommandHeader*>(tls);
-        tls += sizeof(CommandHeader);
+    inline void ReadCommandResponseFromIpcBuffer(CommandContext &ctx) {
+        auto ipc_buf = GetIpcBuffer();
+        auto header = reinterpret_cast<CommandHeader*>(ipc_buf);
+        ipc_buf += sizeof(CommandHeader);
 
         u32 copy_h_count = 0;
         u32 move_h_count = 0;
         ctx.out.process_id = NoOutProcessId;
         if(header->has_special_header) {
-            auto special_header = reinterpret_cast<CommandSpecialHeader*>(tls);
+            auto special_header = reinterpret_cast<CommandSpecialHeader*>(ipc_buf);
             copy_h_count = special_header->copy_handle_count;
             move_h_count = special_header->move_handle_count;
-            tls += sizeof(CommandSpecialHeader);
+            ipc_buf += sizeof(CommandSpecialHeader);
             if(special_header->send_process_id) {
-                ctx.out.process_id = *reinterpret_cast<u64*>(tls);
-                tls += sizeof(u64);
+                ctx.out.process_id = *reinterpret_cast<u64*>(ipc_buf);
+                ipc_buf += sizeof(u64);
             }
         }
 
-        tls = ReadSizedArrayFromTls(tls, copy_h_count, ctx.out.copy_handles);
-        tls = ReadSizedArrayFromTls(tls, move_h_count, ctx.out.move_handles);
+        ipc_buf = ReadSizedArrayFromBuffer(ipc_buf, copy_h_count, ctx.out.copy_handles);
+        ipc_buf = ReadSizedArrayFromBuffer(ipc_buf, move_h_count, ctx.out.move_handles);
 
-        tls += sizeof(SendStaticDescriptor) * header->send_static_count;
-        ctx.out.data_words_offset = tls;
+        ipc_buf += sizeof(SendStaticDescriptor) * header->send_static_count;
+        ctx.out.data_words_offset = ipc_buf;
     }
 
     // Request
 
     constexpr i32 NoRequestId = -1;
 
-    inline void WriteRequestCommandOnTls(CommandContext &ctx, i32 request_id, DomainCommandType domain_command) {
-        auto tls = os::GetThreadLocalStorage<u8>();
+    inline void WriteRequestCommandOnIpcBuffer(CommandContext &ctx, i32 request_id, DomainCommandType domain_command) {
+        auto ipc_buf = GetIpcBuffer();
         const bool has_data_header = request_id != NoRequestId;
 
         u32 data_size = 16 + ctx.in.data_size;
@@ -100,11 +100,11 @@ namespace bio::ipc::client {
         auto out_pointer_sizes_offset = data_size;
         data_size += sizeof(u16) * ctx.in.out_pointer_sizes.GetSize();
 
-        WriteCommandOnTls(ctx, CommandType::Request, data_size);
-        auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, tls);
+        WriteCommandOnIpcBuffer(ctx, CommandType::Request, data_size);
+        auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, ipc_buf);
 
         auto out_pointer_sizes = ctx.in.data_words_offset + out_pointer_sizes_offset;
-        WriteSizedArrayToTls(out_pointer_sizes, ctx.in.out_pointer_sizes);
+        WriteSizedArrayToBuffer(out_pointer_sizes, ctx.in.out_pointer_sizes);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
 
@@ -133,18 +133,18 @@ namespace bio::ipc::client {
         ctx.in.data_offset = data_offset;
     }
 
-    inline Result ReadRequestCommandResponseFromTls(CommandContext &ctx) {
-        auto tls = os::GetThreadLocalStorage<u8>();
-        ReadCommandResponseFromTls(ctx);
+    inline Result ReadRequestCommandResponseFromIpcBuffer(CommandContext &ctx) {
+        auto ipc_buf = GetIpcBuffer();
+        ReadCommandResponseFromIpcBuffer(ctx);
 
-        auto data_offset = GetAlignedDataOffset(ctx.out.data_words_offset, tls);
+        auto data_offset = GetAlignedDataOffset(ctx.out.data_words_offset, ipc_buf);
         auto header = reinterpret_cast<DataHeader*>(data_offset);
 
         if(ctx.session_copy.IsDomain()) {
             auto domain_header = reinterpret_cast<DomainOutDataHeader*>(data_offset);
             data_offset += sizeof(DomainOutDataHeader);
             auto objects_offset = data_offset + sizeof(DataHeader) + ctx.out.data_size;
-            ReadSizedArrayFromTls(objects_offset, domain_header->out_object_count, ctx.out.objects);
+            ReadSizedArrayFromBuffer(objects_offset, domain_header->out_object_count, ctx.out.objects);
             header = reinterpret_cast<DataHeader*>(data_offset);
         }
 
@@ -158,12 +158,12 @@ namespace bio::ipc::client {
 
     // Control
 
-    inline void WriteControlCommandOnTls(CommandContext &ctx, u32 request_id) {
-        auto tls = os::GetThreadLocalStorage<u8>();
+    inline void WriteControlCommandOnIpcBuffer(CommandContext &ctx, u32 request_id) {
+        auto ipc_buf = GetIpcBuffer();
         u32 data_size = 16 + sizeof(DataHeader) + ctx.in.data_size;
 
-        WriteCommandOnTls(ctx, CommandType::Control, data_size);
-        auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, tls);
+        WriteCommandOnIpcBuffer(ctx, CommandType::Control, data_size);
+        auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, ipc_buf);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
         header->magic = DataInHeaderMagic;
@@ -174,10 +174,10 @@ namespace bio::ipc::client {
         ctx.in.data_offset = data_offset;
     }
 
-    inline Result ReadControlCommandResponseFromTls(CommandContext &ctx) {
-        auto tls = os::GetThreadLocalStorage<u8>();
-        ReadCommandResponseFromTls(ctx);
-        auto data_offset = GetAlignedDataOffset(ctx.out.data_words_offset, tls);
+    inline Result ReadControlCommandResponseFromIpcBuffer(CommandContext &ctx) {
+        auto ipc_buf = GetIpcBuffer();
+        ReadCommandResponseFromIpcBuffer(ctx);
+        auto data_offset = GetAlignedDataOffset(ctx.out.data_words_offset, ipc_buf);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
         data_offset += sizeof(DataHeader);
@@ -190,8 +190,8 @@ namespace bio::ipc::client {
 
     // Close
 
-    inline void WriteCloseCommandOnTls(CommandContext &ctx) {
-        WriteCommandOnTls(ctx, CommandType::Close, 0);
+    inline void WriteCloseCommandOnIpcBuffer(CommandContext &ctx) {
+        WriteCommandOnIpcBuffer(ctx, CommandType::Close, 0);
     }
 
     enum class CommandState {

@@ -52,9 +52,9 @@ namespace bio::crt0 {
             BIO_DIAG_RES_ASSERT(dyn::LoadRawModule(aslr_base_address, mod));
         }
 
-        void SetExitFunction(crt0::ExitFunction exit_lr) {
-            if(exit_lr != nullptr) {
-                g_ExitFunction = exit_lr;
+        void SetExitFunction(crt0::ExitFunction lr) {
+            if(lr != nullptr) {
+                g_ExitFunction = lr;
             }
         }
 
@@ -64,7 +64,7 @@ namespace bio::crt0 {
         }
 
         void SetupTlsMainThread(u32 main_thread_handle) {
-            auto tls = os::GetThreadLocalStorage<os::ThreadLocalStorage>();
+            auto tls = os::GetThreadLocalStorage();
             mem::ZeroSingle(tls);
 
             // Get the stack memory region.
@@ -79,33 +79,37 @@ namespace bio::crt0 {
     }
 
     // Similar to offical rtld functionality
+    // x0 and x1 might be different things, depending on the context (data from NRO, exception handling data...)
+
+    // When launched from hbloader (as a NRO), x0 == hbl config entries and x1 == 0xFFFFFFFF
+    // When launched as a normal process (NSO), x0 == nullptr, and x1 == main thread handle
+    // When re-launched due to exception handling, x0 == exception description (error type)
 
     __attribute__((weak))
-    void Entry(void *arg_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction exit_lr, void *bss_start, void *bss_end) {
+    void Entry(void *x0_v, u64 x1_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
         // Clear .bss section
         ClearBss(bss_start, bss_end);
 
         // Relocate ourselves
         dyn::RelocateModule(aslr_base_address);
         
-        const auto has_exception = (arg_ptr != nullptr) && (main_thread_handle_v != -1);
-        const auto is_hbl_nro = (arg_ptr != nullptr) && (main_thread_handle_v == -1);
+        const auto has_exception = (x0_v != nullptr) && (x1_v != 0xFFFFFFFF);
+        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == 0xFFFFFFFF);
 
         if(has_exception) {
-            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(arg_ptr));
+            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
             ExceptionHandler(desc);
         }
 
-        DEBUG_LOG("Ohayo");
-        auto main_thread_handle = static_cast<u32>(main_thread_handle_v);
+        auto main_thread_handle = static_cast<u32>(x1_v);
 
         // Set exit function (svc::ExitProcess is used by default)
-        SetExitFunction(exit_lr);
+        SetExitFunction(lr);
 
         void *heap_address = nullptr;
 
         if(is_hbl_nro) {
-            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(arg_ptr);
+            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(x0_v);
             while(true) {
                 auto key = static_cast<hbl::ABIConfigKey>(arg->key);
                 if(key == hbl::ABIConfigKey::EOL) {
@@ -128,6 +132,7 @@ namespace bio::crt0 {
             }
         }
 
+        // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts)
         void *actual_heap_address;
         u64 actual_heap_size;
         BIO_DIAG_RES_ASSERT(InitializeHeap(heap_address, g_HeapSize, actual_heap_address, actual_heap_size));
@@ -138,10 +143,10 @@ namespace bio::crt0 {
         // Initialize memory allocator
         mem::Initialize(actual_heap_address, actual_heap_size);
 
-        // Register self as a module (for init and fini arrays, etc)
+        // Load self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);
 
-        // Call entrypoint
+        // Call code entrypoint
         Main();
 
         // Note: no disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.

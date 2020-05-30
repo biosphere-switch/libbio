@@ -394,35 +394,39 @@ namespace bio::ipc {
     };
 
     template<typename T, u64 N>
-    inline u8 *WriteSizedArrayToTls(u8 *tls_buf, util::SizedArray<T, N> &array) {
-        auto tls = tls_buf;
+    inline u8 *WriteSizedArrayToBuffer(u8 *buf, util::SizedArray<T, N> &array) {
+        auto tmp_buf = buf;
         if(!array.IsEmpty()) {
             for(u32 i = 0; i < array.GetSize(); i++) {
-                *reinterpret_cast<T*>(tls) = array.GetAt(i);
-                tls += sizeof(T);
+                *reinterpret_cast<T*>(tmp_buf) = array.GetAt(i);
+                tmp_buf += sizeof(T);
             }
         }
-        return tls;
+        return tmp_buf;
     }
 
     template<typename T, u64 N>
-    inline u8 *ReadSizedArrayFromTls(u8 *tls_buf, u32 count, util::SizedArray<T, N> &array) {
-        auto tls = tls_buf;
+    inline u8 *ReadSizedArrayFromBuffer(u8 *buf, u32 count, util::SizedArray<T, N> &array) {
+        auto tmp_buf = buf;
         if(count > 0) {
             auto array_max_size = static_cast<u32>(N);
             auto min = util::Min(count, array_max_size);
             array.Clear();
             for(u32 i = 0; i < min; i++) {
-                array.Push(*reinterpret_cast<T*>(tls));
-                tls += sizeof(T);
+                array.Push(*reinterpret_cast<T*>(tmp_buf));
+                tmp_buf += sizeof(T);
             }
         }
-        return tls;
+        return tmp_buf;
     }
 
     inline u8 *GetAlignedDataOffset(u8 *data_words_offset, u8 *base) {
         i64 data_offset = (data_words_offset - base + 15) &~ 15;
         return base + data_offset;
+    }
+
+    inline u8 *GetIpcBuffer() {
+        return os::GetThreadLocalStorage()->ipc_buffer;
     }
 
 }

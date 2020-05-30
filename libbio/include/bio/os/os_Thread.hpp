@@ -7,10 +7,6 @@
 
 namespace bio::os {
 
-    typedef void(*ThreadEntrypoint)(void*);
-
-    constexpr i32 InvalidPriority = 0xFFFFFFFF;
-
     enum class ThreadState : u32 {
         NotInitialized,
         Initialized,
@@ -21,31 +17,36 @@ namespace bio::os {
 
     struct Thread {
 
+        static constexpr i32 InvalidPriority = -1;
         static constexpr u32 NameMaxLength = 0x20;
+        static constexpr i32 DefaultCpuId = -2;
 
-        u32 state; // TODO: make use of this
-        i32 priority;
+        ThreadState state; // TODO: make use of this
         bool owns_stack;
-        u64 id;
         void *stack;
         u64 stack_size;
         void *entry_arg;
-        ThreadEntrypoint entry;
+        svc::ThreadEntrypointFunction entry;
         void *tls_slots[0x20];
         char name[NameMaxLength + 1];
         u32 name_len;
         u32 handle;
 
-        constexpr Thread() : state(static_cast<u32>(ThreadState::NotInitialized)), priority(0), owns_stack(false), stack(nullptr), stack_size(0) {}
-        constexpr Thread(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, bool owns_stack, i32 priority) : state(static_cast<u32>(ThreadState::NotInitialized)), priority(priority), owns_stack(owns_stack), stack(stack), stack_size(stack_size), entry_arg(entry_arg), entry(entry) {}
+        constexpr Thread() : state(ThreadState::NotInitialized), owns_stack(false), stack(nullptr), stack_size(0), entry_arg(nullptr), entry(nullptr), tls_slots(), name(), name_len(0), handle(InvalidHandle) {}
+        constexpr Thread(svc::ThreadEntrypointFunction entry, void *entry_arg, void *stack, u64 stack_size, bool owns_stack) : state(ThreadState::NotInitialized), owns_stack(owns_stack), stack(stack), stack_size(stack_size), entry_arg(entry_arg), entry(entry), tls_slots(), name(), name_len(0), handle(InvalidHandle) {}
+
+        inline Result EnsureStack() {
+            if(this->stack == nullptr) {
+                if(this->owns_stack) {
+                    BIO_RES_TRY(mem::PageAllocate(this->stack_size, this->stack));
+                }
+            }
+            return ResultSuccess;
+        }
+
+        Result EnsureCreated(i32 priority, i32 cpu_id);
 
         inline Result InitializeWith(u32 thread_handle, const char *name, void *stack, u64 stack_size, bool owns_stack) {
-            // Get thread ID.
-            BIO_RES_TRY(svc::GetThreadId(this->id, thread_handle));
-
-            // Get priority.
-            BIO_RES_TRY(svc::GetThreadPriority(this->priority, thread_handle));
-
             this->SetName(name);
 
             this->stack = stack;
@@ -59,18 +60,27 @@ namespace bio::os {
             return this->handle;
         }
 
-        inline u64 GetId() {
-            return this->id;
+        inline Result GetId(u64 &out_id) {
+            BIO_RES_TRY(svc::GetThreadId(out_id, this->handle));
+            return ResultSuccess;
         }
 
-        inline i32 GetPriority() {
-            return this->priority;
+        inline Result GetPriority(i32 &out_prio) {
+            BIO_RES_TRY(svc::GetThreadPriority(out_prio, this->handle));
+            return ResultSuccess;
+        }
+
+        inline Result SetPriority(i32 priority) {
+            BIO_RES_TRY(svc::SetThreadPriority(this->handle, priority));
+            return ResultSuccess;
         }
 
         inline void SetName(const char *name) {
-            mem::ZeroArray(this->name);
-            util::Strncpy(this->name, name, NameMaxLength + 1);
-            this->name_len = BIO_UTIL_STRLEN(name);
+            if(name != nullptr) {
+                mem::ZeroArray(this->name);
+                util::Strncpy(this->name, name, NameMaxLength + 1);
+                this->name_len = BIO_UTIL_STRLEN(name);
+            }
         }
 
         inline char *GetName() {
@@ -81,10 +91,9 @@ namespace bio::os {
             return this->name_len;
         }
 
-        // Functionality
-
         inline Result Start() {
-            return svc::StartThread(this->handle);
+            BIO_RES_TRY(svc::StartThread(this->handle));
+            return ResultSuccess;
         }
 
         inline void Dispose() {
@@ -95,50 +104,10 @@ namespace bio::os {
                 }
             }
             svc::CloseHandle(this->handle);
+            this->handle = InvalidHandle;
         }
 
-    };
-
-    class ThreadObject {
-
-        public:
-            static constexpr i32 DefaultCpuId = -2;
-
-        private:
-            Thread thread;
-
-        public:
-            constexpr ThreadObject(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, bool owns_stack, i32 priority) : thread(entry, entry_arg, stack, stack_size, owns_stack, priority) {}
-
-            ~ThreadObject() {
-                this->thread.Dispose();
-            }
-
-            inline Thread &GetThread() {
-                return this->thread;
-            }
-
-            inline Result Start() {
-                return this->thread.Start();
-            }
-
-            static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, i32 cpu_id, const char *name, mem::SharedObject<ThreadObject> &out_thread);
-
-            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, u64 stack_size, i32 priority, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
-                return Create(entry, entry_arg, nullptr, stack_size, priority, DefaultCpuId, name, out_thread);
-            }
-
-            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
-                return Create(entry, entry_arg, stack, stack_size, priority, DefaultCpuId, name, out_thread);
-            }
-
-            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, u64 stack_size, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
-                return Create(entry, entry_arg, nullptr, stack_size, InvalidPriority, DefaultCpuId, name, out_thread);
-            }
-
-            inline static Result Create(ThreadEntrypoint entry, void *entry_arg, void *stack, u64 stack_size, const char *name, mem::SharedObject<ThreadObject> &out_thread) {
-                return Create(entry, entry_arg, stack, stack_size, InvalidPriority, DefaultCpuId, name, out_thread);
-            }
+        static Result Create(svc::ThreadEntrypointFunction entry, void *entry_arg, void *stack, u64 stack_size, i32 priority, i32 cpu_id, const char *name, mem::SharedObject<Thread> &out_thread);
 
     };
 

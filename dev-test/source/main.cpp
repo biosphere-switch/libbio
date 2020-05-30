@@ -55,7 +55,7 @@ class BioDevService : public ipc::client::Service {
 
 };
 
-void BioDevMain() {
+void DevMain() {
     BIO_DIAG_LOG("Main()");
 
     mem::SharedObject<BioDevService> biodev;

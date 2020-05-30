@@ -11,6 +11,8 @@ namespace bio::svc {
 
     constexpr i64 IndefiniteWait = 0xFFFF'FFFF'FFFF'FFFF;
 
+    using ThreadEntrypointFunction = void(*)(void*);
+
     struct MemoryInfo {
         u64 address;
         u64 size;
@@ -26,11 +28,12 @@ namespace bio::svc {
     Result SetMemoryPermission(void *addr, u64 size, u32 perm); // 0x02
     Result QueryMemory(MemoryInfo &out_info, u32 &out_page_info, u64 address); // 0x06
     void __attribute__((noreturn)) ExitProcess(); // 0x07
-    Result CreateThread(Handle &out_handle, void *entry, void *entry_arg, void *stack_top, i32 priority, i32 cpu_id); // 0x08
+    Result CreateThread(Handle &out_handle, ThreadEntrypointFunction entry, void *entry_arg, void *stack_top, i32 priority, i32 cpu_id); // 0x08
     Result StartThread(Handle handle); // 0x09
     void __attribute__((noreturn)) ExitThread(); // 0x0A
     void SleepThread(i64 timeout_ns); // 0x0B
     Result GetThreadPriority(i32 &out_priority, Handle handle); // 0x0C
+    Result SetThreadPriority(Handle handle, i32 priority); // 0x0D
     Result CloseHandle(Handle handle); // 0x16
     Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, i64 timeout_ns); // 0x18
     Result ArbitrateLock(u32 wait_tag, u32 *tag_location, u32 self_tag); // 0x1A

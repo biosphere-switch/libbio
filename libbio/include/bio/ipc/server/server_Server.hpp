@@ -32,11 +32,11 @@ namespace bio::ipc::server {
             Result RequestCommandEnd(CommandContext &ctx, Result rc, Args &&...args) {
                 if(rc.IsSuccess()) {
                     (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeResponseWrite), ...);
-                    WriteRequestCommandResponseOnTls(ctx, rc);
+                    WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
                     (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseWrite), ...);
                 }
                 else {
-                    WriteRequestCommandResponseOnTls(ctx, rc);
+                    WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
                 }
                 return rc;
             }
@@ -137,9 +137,6 @@ namespace bio::ipc::server {
         { T::GetPortName() } -> util::SameAs<const char*>;
         { T::GetMaxSessions() } -> util::SameAs<i32>;
     };
-
-    template<typename T>
-    concept IsOnlyServer = IsServer<T> && !IsService<T> && !IsMitmService<T> && !IsNamedPort<T>;
 
 };
 

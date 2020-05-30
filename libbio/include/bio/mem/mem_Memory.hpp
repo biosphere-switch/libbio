@@ -60,12 +60,17 @@ namespace bio::mem {
 
 	AllocationInfo GetAllocationInfo(void *address);
 
+	template<typename T>
+	inline u8 *At(T *ptr, u64 index) {
+		return reinterpret_cast<u8*>(ptr) + index;
+	}
+
 	inline void Set(void *ptr, u64 index, u8 value) {
-		reinterpret_cast<u8*>(ptr)[index] = value;
+		*At(ptr, index) = value;
 	}
 
 	inline u8 Get(const void *ptr, u64 index) {
-		return reinterpret_cast<const u8*>(ptr)[index];
+		return *At(const_cast<void*>(ptr), index);
 	}
 
 	inline void Fill(void *ptr, u8 value, u64 count) {

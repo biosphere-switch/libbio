@@ -2,11 +2,13 @@
 #include <bio/diag/diag_Log.hpp>
 #include <bio/crt0/crt0_Exit.hpp>
 #include <bio/service/service_Services.hpp>
+#include <bio/os/os_Mutex.hpp>
 
 namespace bio::diag {
 
     __attribute__((weak))
     AssertMode g_DefaultAssertMode = AssertMode::ProcessExit;
+    os::Mutex g_AssertionLock;
 
     namespace {
 
@@ -55,6 +57,7 @@ namespace bio::diag {
     }
 
     void AssertImpl(const AssertMetadata &metadata) {
+        os::ScopedMutexLock lk(g_AssertionLock);
         auto mode = metadata.assert_mode;
         if(mode == AssertMode::Default) {
             mode = g_DefaultAssertMode;
