@@ -8,6 +8,7 @@
 #include <bio/service/service_Services.hpp>
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/util/util_List.hpp>
+#include <bio/fs/fs_Api.hpp>
 
 using namespace bio;
 
@@ -69,7 +70,7 @@ void DevMain() {
     crt0::Exit(val);
 }
 
-void Main() {
+void AccMitmMain() {
     BIO_DIAG_LOG("Main()");
 
     mem::SharedObject<AccService> acc;
@@ -81,4 +82,10 @@ void Main() {
     BIO_DIAG_LOGF("Got value: %d", val);
 
     crt0::Exit(val);
+}
+
+void Main() {
+    BIO_DIAG_RES_ASSERT(service::fsp::FileSystemServiceSession.Initialize());
+    BIO_DIAG_RES_ASSERT(fs::MountSdCard("sd"));
+    BIO_DIAG_RES_ASSERT(fs::CreateFile("sd:/bio_fs_file.txt", 0, 0));
 }

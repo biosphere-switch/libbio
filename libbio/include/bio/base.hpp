@@ -113,8 +113,8 @@ namespace bio {
 #define _BIO_AS_RESULT static_cast<::bio::Result>
 
 #define BIO_RES_TRY(expr) ({ \
-    const auto _tmp_rc = (expr); \
-    if(_BIO_AS_RESULT(_tmp_rc).IsFailure()) { \
+    const auto _tmp_rc = _BIO_AS_RESULT(expr); \
+    if(_tmp_rc.IsFailure()) { \
         return _tmp_rc; \
     } \
 })

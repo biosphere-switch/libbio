@@ -42,45 +42,43 @@ namespace bio::dyn {
     }
 
     Result Module::LoadFromNro(void *nro_data, bool is_global) {
-        BIO_SERVICE_DO_WITH(ro, _ro_rc, {
-            BIO_RES_TRY(_ro_rc);
-            BIO_RET_UNLESS(mem::IsAddressAligned(nro_data, mem::PageAlignment), result::ResultInvalidInput);
+        BIO_RET_UNLESS(service::ro::RoServiceSession.IsInitialized(), result::ResultRoNotInitialized);
+        BIO_RET_UNLESS(mem::IsAddressAligned(nro_data, mem::PageAlignment), result::ResultInvalidInput);
 
-            auto nro_header = reinterpret_cast<nro::Header*>(nro_data);
-            const auto nro_size = nro_header->size;
-            const auto bss_size = nro_header->bss_size;
-            BIO_RET_UNLESS(bss_size > 0, result::ResultInvalidInput);
+        auto nro_header = reinterpret_cast<nro::Header*>(nro_data);
+        const auto nro_size = nro_header->size;
+        const auto bss_size = nro_header->bss_size;
+        BIO_RET_UNLESS(bss_size > 0, result::ResultInvalidInput);
 
-            // TODO: find a proper way to get the program ID on >3.0.0, when this svc info type didn't exist
-            // Default to album/hbl in case we aren't able to get it
-            u64 cur_program_id = 0x010000000000100D;
-            svc::GetInfo(cur_program_id, 18, svc::CurrentProcessPseudoHandle, 0);
+        // TODO: find a proper way to get the program ID on >3.0.0, when this svc info type didn't exist
+        // Default to album/hbl in case we aren't able to get it
+        u64 cur_program_id = 0x010000000000100D;
+        svc::GetInfo(cur_program_id, 18, svc::CurrentProcessPseudoHandle, 0);
 
-            const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
-        
-            void *nrr_buf;
-            BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
+        const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
+    
+        void *nrr_buf;
+        BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
 
-            nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
-            nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
+        nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
+        nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
 
-            void *bss_buf;
-            BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
+        void *bss_buf;
+        BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
 
-            BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
+        BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
 
-            u64 nro_addr = 0;
-            BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_size, bss_buf, bss_size, nro_addr));
+        u64 nro_addr = 0;
+        BIO_RES_TRY(service::ro::RoServiceSession->LoadNro(nro_data, nro_size, bss_buf, bss_size, nro_addr));
 
-            this->input.nro = nro_data;
-            this->input.nrr = nrr_buf;
-            this->input.bss = bss_buf;
-            this->input.is_nro = true;
-            this->input.is_global = is_global;
-            this->input.has_run_basic_relocations = false;
-            this->input.base = reinterpret_cast<void*>(nro_addr);
-            this->state = ModuleState::Queued;
-        });
+        this->input.nro = nro_data;
+        this->input.nrr = nrr_buf;
+        this->input.bss = bss_buf;
+        this->input.is_nro = true;
+        this->input.is_global = is_global;
+        this->input.has_run_basic_relocations = false;
+        this->input.base = reinterpret_cast<void*>(nro_addr);
+        this->state = ModuleState::Queued;
         return ResultSuccess;
     }
 
@@ -378,7 +376,7 @@ namespace bio::dyn {
         // We only close/dispose with NROs
         if(this->input.is_nro) {
             if(this->input.IsValid()) {
-                if(service::ro::IsInitialized()) {
+                if(service::ro::RoServiceSession.IsInitialized()) {
                     service::ro::RoServiceSession->UnloadNro(this->input.base);
                     service::ro::RoServiceSession->UnloadNrr(this->input.nrr);
                 }

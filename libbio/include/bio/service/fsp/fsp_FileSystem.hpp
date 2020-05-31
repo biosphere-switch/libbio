@@ -4,6 +4,8 @@
 
 namespace bio::service::fsp {
 
+    constexpr u32 MaxPathLength = 0x301;
+
     class FileSystem : public ipc::client::SessionObject {
 
         public:

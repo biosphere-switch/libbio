@@ -70,7 +70,7 @@ namespace bio::mem {
             }
 
         public:
-            SharedObject() : px(nullptr), pn() {}
+            constexpr SharedObject() : px(nullptr), pn() {}
 
             SharedObject(T *p) : pn() {
                 this->Acquire(p);
@@ -103,6 +103,10 @@ namespace bio::mem {
 
             void Reset() {
                 this->Release();
+            }
+
+            void Dispose() {
+                this->Reset();
             }
 
             void Reset(T *p) {

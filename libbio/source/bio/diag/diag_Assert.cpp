@@ -33,17 +33,12 @@ namespace bio::diag {
         }
 
         void FatalAssert(const AssertMetadata &metadata) {
-            BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-                if(_sm_rc.IsSuccess()) {
-                    BIO_SERVICE_DO_WITH(fatal, _fatal_rc, {
-                        if(_fatal_rc.IsSuccess()) {
-                            service::fatal::FatalServiceSession->ThrowWithPolicy(metadata.assertion_rc, service::fatal::Policy::ErrorScreen);
-                            svc::ExitProcess();
-                            __builtin_unreachable();
-                        }
-                    });
-                }
-            });
+            service::ScopedSessionGuard fatal(service::fatal::FatalServiceSession);
+            if(static_cast<Result>(fatal).IsSuccess()) {
+                service::fatal::FatalServiceSession->ThrowWithPolicy(metadata.assertion_rc, service::fatal::Policy::ErrorScreen);
+                svc::ExitProcess();
+                __builtin_unreachable();
+            }
         }
 
         __attribute__((noreturn))

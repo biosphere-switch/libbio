@@ -81,7 +81,7 @@ namespace bio::crt0 {
     // Similar to offical rtld functionality
     // x0 and x1 might be different things, depending on the context (data from NRO, exception handling data...)
 
-    // When launched from hbloader (as a NRO), x0 == hbl config entries and x1 == 0xFFFFFFFF
+    // When launched from hbloader (as a NRO), x0 == hbl config entries and x1 == -1
     // When launched as a normal process (NSO), x0 == nullptr, and x1 == main thread handle
     // When re-launched due to exception handling, x0 == exception description (error type)
 
@@ -93,8 +93,8 @@ namespace bio::crt0 {
         // Relocate ourselves
         dyn::RelocateModule(aslr_base_address);
         
-        const auto has_exception = (x0_v != nullptr) && (x1_v != 0xFFFFFFFF);
-        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == 0xFFFFFFFF);
+        const auto has_exception = (x0_v != nullptr) && (x1_v != -1);
+        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
 
         if(has_exception) {
             auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));

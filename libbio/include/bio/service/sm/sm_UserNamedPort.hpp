@@ -100,20 +100,19 @@ namespace bio::ipc::client::impl {
     template<typename S>
     inline Result CreateServiceSession(Session &out_session) {
         static_assert(IsService<S>, "Invalid input");
+
+        service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
+        BIO_RES_TRY(sm);
     
-        BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-            BIO_RES_TRY(_sm_rc);
+        const auto srv_name = service::sm::ServiceName::Encode(S::GetName());
+        Session tmp_session;
+        BIO_RES_TRY(service::sm::UserNamedPortSession->GetService(srv_name, tmp_session));
 
-            const auto srv_name = service::sm::ServiceName::Encode(S::GetName());
-            Session tmp_session;
-            BIO_RES_TRY(service::sm::UserNamedPortSession->GetService(srv_name, tmp_session));
+        if(S::IsDomain) {
+            BIO_RES_TRY(tmp_session.ConvertToDomain());
+        }
 
-            if(S::IsDomain) {
-                BIO_RES_TRY(tmp_session.ConvertToDomain());
-            }
-
-            out_session = tmp_session;
-        });
+        out_session = tmp_session;
         return ResultSuccess;
     }
 

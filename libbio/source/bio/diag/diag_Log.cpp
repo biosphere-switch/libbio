@@ -161,79 +161,78 @@ namespace bio::diag {
 
     Result LogImpl(const LogMetadata &metadata) {
         os::ScopedMutexLock lk(g_LoggingLock);
-        BIO_SERVICE_DO_WITH(lm, _lm_rc, {
-            BIO_RES_TRY(_lm_rc);
+        service::ScopedSessionGuard lm(service::lm::LogServiceSession);
+        BIO_RES_TRY(lm);
 
-            LogPacket *packets;
-            u32 packet_count = 0;
-            BIO_RES_TRY(AllocatePackets(metadata.text_log_len, packets, packet_count));
+        LogPacket *packets;
+        u32 packet_count = 0;
+        BIO_RES_TRY(AllocatePackets(metadata.text_log_len, packets, packet_count));
+        
+        auto head_packet = &packets[0];
+        head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
+        svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
+        auto &cur_thr = os::GetCurrentThread();
+        BIO_RES_TRY(cur_thr.GetId(head_packet->header.thread_id));
+
+        auto tail_packet = &packets[packet_count - 1];
+        tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
+
+        head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
+        head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
+        head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
+        head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
+
+        auto remaining_len = metadata.text_log_len;
+        auto cur_packet = head_packet;
+        const char *text_log_buf = metadata.text_log;
+        while(remaining_len > 0) {
+            const auto cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
+            cur_packet->payload.text_log.Initialize(LogDataChunkKey::TextLog, text_log_buf, cur_len);
+            cur_packet++;
+            text_log_buf += cur_len;
+            remaining_len -= cur_len;
+        }
+
+        mem::SharedObject<service::lm::Logger> logger;
+        BIO_RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
+
+        for(u32 i = 0; i < packet_count; i++) {
+            auto cur_packet = &packets[i];
+            cur_packet->header.flags |= static_cast<u8>(LogPacketFlags::LittleEndian);
+            cur_packet->header.severity = static_cast<u8>(metadata.severity);
+            cur_packet->header.verbosity = static_cast<u8>(metadata.verbosity);
             
-            auto head_packet = &packets[0];
-            head_packet->header.flags |= static_cast<u8>(LogPacketFlags::Head);
-            svc::GetProcessId(head_packet->header.process_id, svc::CurrentProcessPseudoHandle);
-            auto &cur_thr = os::GetCurrentThread();
-            BIO_RES_TRY(cur_thr.GetId(head_packet->header.thread_id));
+            cur_packet->header.payload_size = cur_packet->payload.ComputeSize();
+            const u64 log_buf_size = cur_packet->ComputeSize();
 
-            auto tail_packet = &packets[packet_count - 1];
-            tail_packet->header.flags |= static_cast<u8>(LogPacketFlags::Tail);
-
-            head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
-            head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
-            head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
-            head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
-
-            auto remaining_len = metadata.text_log_len;
-            auto cur_packet = head_packet;
-            const char *text_log_buf = metadata.text_log;
-            while(remaining_len > 0) {
-                const auto cur_len = (remaining_len > MaxStringLength) ? MaxStringLength : remaining_len;
-                cur_packet->payload.text_log.Initialize(LogDataChunkKey::TextLog, text_log_buf, cur_len);
-                cur_packet++;
-                text_log_buf += cur_len;
-                remaining_len -= cur_len;
+            u8 *log_buf;
+            auto rc = mem::Allocate(log_buf_size, log_buf);
+            if(rc.IsFailure()) {
+                FreePackets(packets);
+                return rc;
             }
+            
+            auto encode_buf = EncodePayload(log_buf, cur_packet->header);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_begin);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_end);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.text_log);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.line_number);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.file_name);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.function_name);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.module_name);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.thread_name);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_packet_drop_count);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.user_system_clock);
+            encode_buf = EncodePayload(encode_buf, cur_packet->payload.process_name);
 
-            mem::SharedObject<service::lm::Logger> logger;
-            BIO_RES_TRY(service::lm::LogServiceSession->OpenLogger(logger));
-
-            for(u32 i = 0; i < packet_count; i++) {
-                auto cur_packet = &packets[i];
-                cur_packet->header.flags |= static_cast<u8>(LogPacketFlags::LittleEndian);
-                cur_packet->header.severity = static_cast<u8>(metadata.severity);
-                cur_packet->header.verbosity = static_cast<u8>(metadata.verbosity);
-                
-                cur_packet->header.payload_size = cur_packet->payload.ComputeSize();
-                const u64 log_buf_size = cur_packet->ComputeSize();
-
-                u8 *log_buf;
-                auto rc = mem::Allocate(log_buf_size, log_buf);
-                if(rc.IsFailure()) {
-                    FreePackets(packets);
-                    return rc;
-                }
-                
-                auto encode_buf = EncodePayload(log_buf, cur_packet->header);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_begin);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_session_end);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.text_log);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.line_number);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.file_name);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.function_name);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.module_name);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.thread_name);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.log_packet_drop_count);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.user_system_clock);
-                encode_buf = EncodePayload(encode_buf, cur_packet->payload.process_name);
-
-                rc = logger->Log(log_buf, log_buf_size);
-                mem::Free(log_buf);
-                if(rc.IsFailure()) {
-                    FreePackets(packets);
-                    return rc;
-                }
+            rc = logger->Log(log_buf, log_buf_size);
+            mem::Free(log_buf);
+            if(rc.IsFailure()) {
+                FreePackets(packets);
+                return rc;
             }
-            FreePackets(packets);
-        });
+        }
+        FreePackets(packets);
         return ResultSuccess;
     }
 

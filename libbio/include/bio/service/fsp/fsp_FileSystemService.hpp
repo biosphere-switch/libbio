@@ -30,4 +30,6 @@ namespace bio::service::fsp {
 
     };
 
+    BIO_SERVICE_DECLARE_GLOBAL_SESSION(FileSystemService);
+
 }
