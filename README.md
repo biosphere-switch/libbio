@@ -12,7 +12,11 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 ## TODO
 
-- Implement a filesystem device (in replacement of stuff like `fopen`, `fwrite`...)
+- Fully mplement filesystem API: File opening/reading/writing/deleting, directory iterating/creating/deleting
+
+- Fully implement serverside IPC: buffers, domains
+
+- Implement serverside MITM IPC (get it to work)
 
 - Fully implement CRT0 initialization: homebrew API processing, argv
 
@@ -49,6 +53,10 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 - Implemented an assertion system (lm, fatal, svcBreak, process exit)
 
 - Basic exception handling support
+
+- Filesystem API: device mounting, file creating
+
+- Proper service guarding to ensure services are properly accessed and disposed
 
 ## Future plans (maybe)
 

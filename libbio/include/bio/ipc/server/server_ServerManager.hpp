@@ -2,7 +2,7 @@
 #pragma once
 #include <bio/ipc/server/server_MitmQuery.hpp>
 #include <bio/ipc/server/server_Results.hpp>
-#include <bio/service/sm/sm_UserNamedPort.hpp>
+#include <bio/util/util_List.hpp>
 
 namespace bio::ipc::server {
 
@@ -162,11 +162,10 @@ namespace bio::ipc::server {
                 u32 fwd_handle = InvalidHandle;
                 if(this->is_mitm) {
                     service::sm::MitmProcessInfo info;
-                    
-                    BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-                        BIO_RES_TRY(_sm_rc);
-                        BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereAcknowledgeMitmSession(this->service_name, info, fwd_handle));
-                    });
+
+                    service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
+                    BIO_RES_TRY(sm);
+                    BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereAcknowledgeMitmSession(this->service_name, info, fwd_handle));
                 }
 
                 this->fwd_handles.Push(fwd_handle);
@@ -219,6 +218,8 @@ namespace bio::ipc::server {
             util::LinkedList<ServerObject*> servers;
             util::SizedArray<u32, 0x40> wait_handles;
 
+            static Result RegisterMitmQuerySession(u32 mitm_query_handle, ShouldMitmFunction fn);
+
             void PrepareWaitHandles() {
                 this->wait_handles.Clear();
                 for(u32 i = 0; i < this->servers.GetSize(); i++) {
@@ -262,11 +263,9 @@ namespace bio::ipc::server {
 
                 const auto name = service::sm::ServiceName::Encode(S::GetName());
                 u32 handle;
-                BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-                    BIO_RES_TRY(_sm_rc);
-                    
-                    BIO_RES_TRY(service::sm::UserNamedPortSession->RegisterService(name, false, S::GetMaxSessions(), handle));
-                });
+                service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
+                BIO_RES_TRY(sm);
+                BIO_RES_TRY(service::sm::UserNamedPortSession->RegisterService(name, false, S::GetMaxSessions(), handle));
 
                 BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, false, name, s_args...));
                 
@@ -280,13 +279,11 @@ namespace bio::ipc::server {
                 const auto name = service::sm::ServiceName::Encode(S::GetName());
                 u32 handle;
                 u32 mitm_query_handle;
-                BIO_SERVICE_DO_WITH(sm, _sm_rc, {
-                    BIO_RES_TRY(_sm_rc);
+                service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
+                BIO_RES_TRY(sm);
+                BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
 
-                    BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
-                });
-
-                BIO_RES_TRY(this->RegisterSession<MitmQueryServer>(mitm_query_handle, &S::ShouldMitm));
+                BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
                 BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
 
                 return ResultSuccess;

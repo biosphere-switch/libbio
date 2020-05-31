@@ -1,6 +1,10 @@
 
 #pragma once
 #include <bio/ipc/server/server_Impl.hpp>
+#include <bio/util/util_Concepts.hpp>
+#include <bio/service/sm/sm_UserNamedPort.hpp>
+
+#include <bio/diag/diag_Log.hpp>
 
 namespace bio::ipc::server {
 

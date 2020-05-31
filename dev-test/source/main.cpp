@@ -70,7 +70,7 @@ void DevMain() {
     crt0::Exit(val);
 }
 
-void AccMitmMain() {
+void Main() {
     BIO_DIAG_LOG("Main()");
 
     mem::SharedObject<AccService> acc;
@@ -84,8 +84,12 @@ void AccMitmMain() {
     crt0::Exit(val);
 }
 
-void Main() {
+void FsMain() {
+    BIO_DIAG_LOG("Main()");
+
     BIO_DIAG_RES_ASSERT(service::fsp::FileSystemServiceSession.Initialize());
     BIO_DIAG_RES_ASSERT(fs::MountSdCard("sd"));
     BIO_DIAG_RES_ASSERT(fs::CreateFile("sd:/bio_fs_file.txt", 0, 0));
+
+    BIO_DIAG_LOG("Done");
 }
