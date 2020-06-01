@@ -10,9 +10,29 @@ The library makes use of C++20 (gnu++20 in clang), recently released, since it m
 
 The library is a work-in-progress project. Check what's been acomplished and what still needs to be acomplished below:
 
+## Custom results
+
+Result module: 420
+
+- Common: submodule 0 (2420-00**)
+
+- Memory: submodule 1 (2420-01**)
+
+- Dynamic: submodule 2 (2420-02**)
+
+- Client IPC: submodule 3 (2420-03**)
+
+- Diag: submodule 4 (2420-04**)
+
+- Server IPC: submodule 5 (2420-05**)
+
+- Filesystem: submodule 6 (2420-06**)
+
+- Util: submodule 7 (2420-07**)
+
 ## TODO
 
-- Fully mplement filesystem API: File opening/reading/writing/deleting, directory iterating/creating/deleting
+- Fully mplement filesystem API: File deleting, directory iterating/creating/deleting
 
 - Fully implement serverside IPC: buffers, domains
 
@@ -54,9 +74,11 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 - Basic exception handling support
 
-- Filesystem API: device mounting, file creating
+- Filesystem API: device mounting, file creating/opening/reading/writing
 
 - Proper service guarding to ensure services are properly accessed and disposed
+
+- System version getting support, supporting both hbl HosVersion and set:sys service.
 
 ## Future plans (maybe)
 

@@ -58,8 +58,8 @@ namespace bio::fs {
             return true;
         }
 
-        void PackPath(util::LinkedList<PathName> &name_list, char *out_path, bool add_root) {
-            if(!ValidateUnpackedPath(name_list)) {
+        void PackPath(util::LinkedList<PathName> &unpacked_path, char *out_path, bool add_root) {
+            if(!ValidateUnpackedPath(unpacked_path)) {
                 return;
             }
 
@@ -75,8 +75,8 @@ namespace bio::fs {
                 i++;
                 _WRITE_PATH(PathSeparator);
             }
-            for(; i < name_list.GetSize(); i++) {
-                auto &name = name_list.GetAt(i);
+            for(; i < unpacked_path.GetSize(); i++) {
+                auto &name = unpacked_path.GetAt(i);
                 u32 name_offset = 0;
                 while(true) {
                     auto &cur = name.name[name_offset];
@@ -97,8 +97,10 @@ namespace bio::fs {
         }
 
         util::LinkedList<Device> g_MountedDevices;
+        os::Mutex g_DevicesLock;
 
         bool FindDeviceByName(PathName name, Device &out_dev) {
+            os::ScopedMutexLock lk(g_DevicesLock);
             for(u32 i = 0; i < g_MountedDevices.GetSize(); i++) {
                 auto &device = g_MountedDevices.GetAt(i);
                 if(device.root_name.Equals(name)) {
@@ -112,6 +114,7 @@ namespace bio::fs {
     }
 
     Result MountFileSystem(const char *name, mem::SharedObject<service::fsp::FileSystem> fs) {
+        os::ScopedMutexLock lk(g_DevicesLock);
         Device fs_dev;
         fs_dev.fs = fs;
         fs_dev.root_name.SetName(name);
@@ -131,22 +134,62 @@ namespace bio::fs {
         return ResultSuccess;
     }
 
-    Result CreateFile(const char *path, u32 flags, u64 size) {
+    Result CreateFile(const char *path, service::fsp::FileCreateOption option, u64 size) {
         BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
 
-        util::LinkedList<PathName> name_list;
-        UnpackPath(name_list, path);
-        BIO_RET_UNLESS(ValidateUnpackedPath(name_list), result::ResultInvalidPath);
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
 
-        auto &root = name_list.Front();
+        auto &root = unpacked_path.Front();
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
         char fsp_path[service::fsp::MaxPathLength];
         mem::ZeroArray(fsp_path);
-        PackPath(name_list, fsp_path, false);
-        BIO_RES_TRY(dev.fs->CreateFile(fsp_path, service::fsp::MaxPathLength, flags, size));
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->CreateFile(fsp_path, service::fsp::MaxPathLength, option, size));
 
+        return ResultSuccess;
+    }
+
+    Result OpenFile(const char *path, service::fsp::FileOpenMode mode, mem::SharedObject<File> &out_file) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+
+        mem::SharedObject<service::fsp::File> fsp_file;
+        auto rc = dev.fs->OpenFile(fsp_path, sizeof(fsp_path), mode, fsp_file);
+        if(rc == service::fsp::result::ResultPathNotFound) {
+            // Create the file if it doesn't exist, and retry.
+            // Note: creating as normal (non-concatenation file) by default, maybe let the dev/user choose this?
+            BIO_RES_TRY(dev.fs->CreateFile(fsp_path, sizeof(fsp_path), service::fsp::FileCreateOption::None, 0));
+
+            // Retry again - don't call the function itself, in case this causes an infinite recursion.
+            BIO_RES_TRY(dev.fs->OpenFile(fsp_path, sizeof(fsp_path), mode, fsp_file));
+        }
+        else {
+            BIO_RES_TRY(rc);
+        }
+
+        mem::SharedObject<File> file;
+        BIO_RES_TRY(mem::NewShared<File>(file, fsp_file));
+
+        if(static_cast<bool>(mode & service::fsp::FileOpenMode::Append)) {
+            // If opening as append mode, set position at the end of the file by default.
+            file->Seek(0, Whence::End);
+        }
+        out_file = util::Move(file);
         return ResultSuccess;
     }
 

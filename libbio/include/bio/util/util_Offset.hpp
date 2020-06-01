@@ -1,5 +1,6 @@
 
 #pragma once
+#include <bio/base.hpp>
 
 namespace bio::util {
 

@@ -4,6 +4,7 @@
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/os/os_Tls.hpp>
+#include <bio/os/os_Version.hpp>
 #include <bio/hbl/hbl_HbAbi.hpp>
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
@@ -72,8 +73,29 @@ namespace bio::crt0 {
             u32 page_info;
             BIO_DIAG_RES_ASSERT(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
 
-            g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false); // Assert
+            BIO_DIAG_RES_ASSERT(g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false));
             tls->thread_ref = &g_MainThread;
+        }
+
+        Result SetSystemVersion(u32 hbl_hos_version) {
+            if(hbl_hos_version > 0) {
+                // Hbl gave us a system version, so use it.
+                const auto major = static_cast<u8>((hbl_hos_version >> 16) & 0xFF);
+                const auto minor = static_cast<u8>((hbl_hos_version >> 8) & 0xFF);
+                const auto micro = static_cast<u8>(hbl_hos_version & 0xFF);
+                os::SetSystemVersion({ major, minor, micro });
+            }
+            else {
+                // Get system version from set:sys.
+                service::ScopedSessionGuard setsys(service::set::sys::SysServiceSession);
+                BIO_RES_TRY(setsys);
+
+                service::set::sys::FirmwareVersion fwver;
+                BIO_RES_TRY(service::set::sys::SysServiceSession->GetFirmwareVersion(fwver));
+
+                os::SetSystemVersion({ fwver.major, fwver.minor, fwver.micro });
+            }
+            return ResultSuccess;
         }
 
     }
@@ -83,7 +105,7 @@ namespace bio::crt0 {
 
     // When launched from hbloader (as a NRO), x0 == hbl config entries and x1 == -1
     // When launched as a normal process (NSO), x0 == nullptr, and x1 == main thread handle
-    // When re-launched due to exception handling, x0 == exception description (error type)
+    // When re-launched due to exception handling, x0 == exception description (error type) and x1 == stack top
 
     __attribute__((weak))
     void Entry(void *x0_v, u64 x1_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
@@ -107,6 +129,7 @@ namespace bio::crt0 {
         SetExitFunction(lr);
 
         void *heap_address = nullptr;
+        u32 hbl_hos_version = 0;
 
         if(is_hbl_nro) {
             auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(x0_v);
@@ -125,6 +148,10 @@ namespace bio::crt0 {
                         main_thread_handle = static_cast<u32>(arg->value[0]);
                         break;
                     }
+                    case hbl::ABIConfigKey::HosVersion: {
+                        hbl_hos_version = static_cast<u32>(arg->value[0]);
+                        break;
+                    };
                     default:
                         break;
                 }
@@ -140,18 +167,21 @@ namespace bio::crt0 {
         // Prepare TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
 
-        // Initialize memory allocator
+        // Initialize memory allocator.
         mem::Initialize(actual_heap_address, actual_heap_size);
+
+        // Set system version.
+        BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
 
         // Load self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);
 
-        // Call code entrypoint
+        // Call code entrypoint.
         Main();
 
         // Note: no disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
 
-        // Successful exit by default
+        // Successful exit by default.
         Exit(SuccessExit);
     }
 

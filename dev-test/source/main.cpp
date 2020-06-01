@@ -9,6 +9,7 @@
 #include <bio/dyn/dyn_Module.hpp>
 #include <bio/util/util_List.hpp>
 #include <bio/fs/fs_Api.hpp>
+#include <bio/os/os_Version.hpp>
 
 using namespace bio;
 
@@ -70,7 +71,7 @@ void DevMain() {
     crt0::Exit(val);
 }
 
-void Main() {
+void AccMitmMain() {
     BIO_DIAG_LOG("Main()");
 
     mem::SharedObject<AccService> acc;
@@ -84,12 +85,22 @@ void Main() {
     crt0::Exit(val);
 }
 
-void FsMain() {
+#define FS_LOG(fmt, ...) ({ \
+    mem::SharedObject<fs::File> f; \
+    BIO_DIAG_RES_ASSERT(fs::OpenFile("sd:/write.log", service::fsp::FileOpenMode::Write | service::fsp::FileOpenMode::Append, f)); \
+    char buf[0x400]; \
+    mem::ZeroArray(buf); \
+    const auto buf_len = static_cast<u32>(util::SNPrintf(buf, sizeof(buf), fmt, ##__VA_ARGS__)); \
+    BIO_DIAG_RES_ASSERT(f->Write(buf, buf_len)); \
+})
+
+void Main() {
     BIO_DIAG_LOG("Main()");
 
     BIO_DIAG_RES_ASSERT(service::fsp::FileSystemServiceSession.Initialize());
     BIO_DIAG_RES_ASSERT(fs::MountSdCard("sd"));
-    BIO_DIAG_RES_ASSERT(fs::CreateFile("sd:/bio_fs_file.txt", 0, 0));
+    
+    FS_LOG("Hey %d", 69420);
 
     BIO_DIAG_LOG("Done");
 }

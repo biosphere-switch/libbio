@@ -2,6 +2,7 @@
 #pragma once
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/util/util_Templates.hpp>
+#include <bio/util/util_Results.hpp> 
 
 namespace bio::util {
 
@@ -118,7 +119,7 @@ namespace bio::util {
 
             inline Result PushAt(u32 index, T value) {
                 auto at_idx = this->GetNodeAtIndex(index);
-                BIO_RET_UNLESS(at_idx != nullptr, 0xbabe);
+                BIO_RET_UNLESS(at_idx != nullptr, result::ResultInvalidIndex);
 
                 if(at_idx->IsHead()) {
                     ListNode *node;
