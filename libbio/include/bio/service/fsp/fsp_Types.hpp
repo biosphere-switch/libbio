@@ -20,7 +20,7 @@ namespace bio::service::fsp {
 
     constexpr u32 MaxPathLength = 0x301;
 
-    enum class FileCreateOption : u32 {
+    enum class FileAttribute : u8 {
         None = 0,
         ConcatenationFile = BIO_BITMASK(0),
     };
@@ -33,5 +33,34 @@ namespace bio::service::fsp {
         None = 0,
         Flush = BIO_BITMASK(0),
     };
+
+    enum class DirectoryEntryType : u8 {
+        Directory,
+        File,
+    };
+
+    struct DirectoryEntry {
+        char name[MaxPathLength];
+        FileAttribute file_attr;
+        u8 pad[2];
+        DirectoryEntryType type;
+        u8 pad2[3];
+        u64 file_size;
+    };
+    static_assert(sizeof(DirectoryEntry) == 0x310);
+
+    enum class DirectoryOpenMode : i64 {
+        ReadDirectories = BIO_BITMASK(0),
+        ReadFiles = BIO_BITMASK(1),
+        NoFileSizes = BIO_BITMASK(31),
+    };
+
+    inline constexpr DirectoryOpenMode operator|(DirectoryOpenMode lhs, DirectoryOpenMode rhs) {
+        return static_cast<DirectoryOpenMode>(static_cast<i64>(lhs) | static_cast<i64>(rhs));
+    }
+
+    inline constexpr DirectoryOpenMode operator&(DirectoryOpenMode lhs, DirectoryOpenMode rhs) {
+        return static_cast<DirectoryOpenMode>(static_cast<i64>(lhs) & static_cast<i64>(rhs));
+    }
 
 }

@@ -117,6 +117,11 @@ namespace bio::mem {
 		}
 	}
 
+	template<typename T>
+	inline void Copy(T *dest, const T *src) {
+		Copy(dest, src, sizeof(T));
+	}
+
 	constexpr u64 NoAlignment = 0;
 
 	constexpr u64 PageAlignment = 0x1000;

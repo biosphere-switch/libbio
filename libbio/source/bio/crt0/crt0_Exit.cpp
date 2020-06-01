@@ -8,7 +8,7 @@ namespace bio::crt0 {
 
     namespace {
 
-        struct ExitEntry {
+        struct AtExitEntry {
             AtExitFunction fn;
             void *args;
 
@@ -20,35 +20,31 @@ namespace bio::crt0 {
 
         };
 
-        util::LinkedList<ExitEntry> g_ExitEntries;
-        os::Mutex g_ExitLock;
+        util::LinkedList<AtExitEntry> g_AtExitEntries;
+        os::Mutex g_AtExitLock;
 
         void ProcessAtExitEntries() {
-            os::ScopedMutexLock lk(g_ExitLock);
-            for(u32 i = 0; i < g_ExitEntries.GetSize(); i++) {
-                auto &entry = g_ExitEntries.GetAt(i);
-                DEBUG_LOG_FMT("Exit entry: %p", entry.fn);
+            os::ScopedMutexLock lk(g_AtExitLock);
+            for(u32 i = 0; i < g_AtExitEntries.GetSize(); i++) {
+                auto &entry = g_AtExitEntries.GetAt(i);
                 entry.Run();
             }
-            g_ExitEntries.Clear();
+            g_AtExitEntries.Clear();
         }
 
     }
 
     // Use svc::ExitProcess by default
-
     auto g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
 
     void RegisterAtExit(AtExitFunction fn, void *arg) {
-        os::ScopedMutexLock lk(g_ExitLock);
-        g_ExitEntries.PushBack({ fn, arg });
+        os::ScopedMutexLock lk(g_AtExitLock);
+        g_AtExitEntries.PushBack({ fn, arg });
     }
 
     void Exit(i32 error_code) {
         // Run all entries
         ProcessAtExitEntries();
-
-        os::ScopedMutexLock lk(g_ExitLock);
 
         // g_ExitFunction must have a valid value, which is set by the CRT0
         g_ExitFunction(error_code);

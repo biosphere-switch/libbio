@@ -87,7 +87,7 @@ void AccMitmMain() {
 
 #define FS_LOG(fmt, ...) ({ \
     mem::SharedObject<fs::File> f; \
-    BIO_DIAG_RES_ASSERT(fs::OpenFile("sd:/write.log", service::fsp::FileOpenMode::Write | service::fsp::FileOpenMode::Append, f)); \
+    BIO_DIAG_RES_ASSERT(fs::OpenFile("sd:/fs_test_log.log", service::fsp::FileOpenMode::Write | service::fsp::FileOpenMode::Append, f)); \
     char buf[0x400]; \
     mem::ZeroArray(buf); \
     const auto buf_len = static_cast<u32>(util::SNPrintf(buf, sizeof(buf), fmt, ##__VA_ARGS__)); \
@@ -100,7 +100,17 @@ void Main() {
     BIO_DIAG_RES_ASSERT(service::fsp::FileSystemServiceSession.Initialize());
     BIO_DIAG_RES_ASSERT(fs::MountSdCard("sd"));
     
-    FS_LOG("Hey %d", 69420);
+    fs::CreateFile("sd:/file", service::fsp::FileAttribute::None, 0);
+    fs::DeleteFile("sd:/file");
+
+    fs::CreateDirectory("sd:/dir");
+    fs::CreateDirectory("sd:/dir/dir2");
+    fs::CreateDirectory("sd:/dir/../newdir");
+
+    service::fsp::DirectoryEntryType type;
+    fs::GetEntryType("sd:/newdir", type);
+
+    BIO_DIAG_LOGF("Type: %s", (type == service::fsp::DirectoryEntryType::Directory) ? "Directory" : "File");
 
     BIO_DIAG_LOG("Done");
 }

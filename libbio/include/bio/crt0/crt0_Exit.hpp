@@ -5,9 +5,9 @@
 namespace bio::crt0 {
 
     using AtExitFunction = void(*)(void*);
-    using ExitFunction = void(*)(i32 error_code);
+    using ExitFunction = void(*)(i32);
 
-    constexpr i32 SuccessExit = 0;
+    constexpr i32 ExitSuccess = 0;
 
     void RegisterAtExit(AtExitFunction fn, void *arg = nullptr);
     void Exit(i32 error_code);

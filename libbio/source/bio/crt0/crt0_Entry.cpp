@@ -182,7 +182,7 @@ namespace bio::crt0 {
         // Note: no disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
 
         // Successful exit by default.
-        Exit(SuccessExit);
+        Exit(ExitSuccess);
     }
 
 }

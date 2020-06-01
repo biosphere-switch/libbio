@@ -32,8 +32,6 @@ Result module: 420
 
 ## TODO
 
-- Fully mplement filesystem API: File deleting, directory iterating/creating/deleting
-
 - Fully implement serverside IPC: buffers, domains
 
 - Implement serverside MITM IPC (get it to work)
@@ -74,7 +72,7 @@ Result module: 420
 
 - Basic exception handling support
 
-- Filesystem API: device mounting, file creating/opening/reading/writing
+- Filesystem API: device mounting, file creating/deleting/opening/reading/writing, directory creating/deleting/iterating...
 
 - Proper service guarding to ensure services are properly accessed and disposed
 

@@ -134,7 +134,7 @@ namespace bio::fs {
         return ResultSuccess;
     }
 
-    Result CreateFile(const char *path, service::fsp::FileCreateOption option, u64 size) {
+    Result CreateFile(const char *path, service::fsp::FileAttribute option, u64 size) {
         BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
 
         util::LinkedList<PathName> unpacked_path;
@@ -173,7 +173,7 @@ namespace bio::fs {
         if(rc == service::fsp::result::ResultPathNotFound) {
             // Create the file if it doesn't exist, and retry.
             // Note: creating as normal (non-concatenation file) by default, maybe let the dev/user choose this?
-            BIO_RES_TRY(dev.fs->CreateFile(fsp_path, sizeof(fsp_path), service::fsp::FileCreateOption::None, 0));
+            BIO_RES_TRY(dev.fs->CreateFile(fsp_path, sizeof(fsp_path), service::fsp::FileAttribute::None, 0));
 
             // Retry again - don't call the function itself, in case this causes an infinite recursion.
             BIO_RES_TRY(dev.fs->OpenFile(fsp_path, sizeof(fsp_path), mode, fsp_file));
@@ -190,6 +190,126 @@ namespace bio::fs {
             file->Seek(0, Whence::End);
         }
         out_file = util::Move(file);
+        return ResultSuccess;
+    }
+
+    Result DeleteFile(const char *path) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->DeleteFile(fsp_path, sizeof(fsp_path)));
+
+        return ResultSuccess;
+    }
+
+    Result CreateDirectory(const char *path) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->CreateDirectory(fsp_path, sizeof(fsp_path)));
+
+        return ResultSuccess;
+    }
+
+    Result OpenDirectory(const char *path, service::fsp::DirectoryOpenMode mode, mem::SharedObject<Directory> &out_directory) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+
+        mem::SharedObject<service::fsp::Directory> fsp_dir;
+        BIO_RES_TRY(dev.fs->OpenDirectory(fsp_path, sizeof(fsp_path), mode, fsp_dir));
+
+        mem::SharedObject<Directory> dir;
+        BIO_RES_TRY(mem::NewShared<Directory>(dir, fsp_dir));
+
+        out_directory = util::Move(dir);
+        return ResultSuccess;
+    }
+
+    Result DeleteDirectory(const char *path) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->DeleteDirectory(fsp_path, sizeof(fsp_path)));
+
+        return ResultSuccess;
+    }
+
+    Result DeleteDirectoryRecursively(const char *path) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->DeleteDirectoryRecursively(fsp_path, sizeof(fsp_path)));
+
+        return ResultSuccess;
+    }
+
+    Result GetEntryType(const char *path, service::fsp::DirectoryEntryType &out_type) {
+        BIO_RET_UNLESS(service::fsp::FileSystemServiceSession.IsInitialized(), result::ResultFspNotInitialized);
+
+        util::LinkedList<PathName> unpacked_path;
+        UnpackPath(unpacked_path, path);
+        BIO_RET_UNLESS(ValidateUnpackedPath(unpacked_path), result::ResultInvalidPath);
+
+        auto &root = unpacked_path.Front();
+        Device dev;
+        BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
+
+        char fsp_path[service::fsp::MaxPathLength];
+        mem::ZeroArray(fsp_path);
+        PackPath(unpacked_path, fsp_path, false);
+        BIO_RES_TRY(dev.fs->GetEntryType(fsp_path, sizeof(fsp_path), out_type));
+
         return ResultSuccess;
     }
 
