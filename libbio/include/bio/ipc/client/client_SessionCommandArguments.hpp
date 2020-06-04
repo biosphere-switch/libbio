@@ -53,7 +53,7 @@ namespace bio::ipc::client {
                         if(ctx.HasOutObject<Index>()) {
                             ctx.GetOutObject<Index>(obj_id);
                             auto session = Session::CreateDomainFromParent(ctx.session_copy, obj_id);
-                            mem::NewShared<S>(session_obj, session); // Check result...?
+                            mem::NewShared(session_obj, session); // Check result...?
                         }
                     }
                     else {
@@ -61,7 +61,7 @@ namespace bio::ipc::client {
                         if(ctx.HasOutHandle<HandleMode::Move, Index>()) {
                             ctx.GetOutHandle<HandleMode::Move, Index>(handle);
                             auto session = Session::CreateFromHandle(handle);
-                            mem::NewShared<S>(session_obj, session); // Check result...?
+                            mem::NewShared(session_obj, session); // Check result...?
                         }
                     }
                     break;

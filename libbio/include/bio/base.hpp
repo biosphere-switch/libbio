@@ -112,14 +112,14 @@ namespace bio {
 
 #define _BIO_AS_RESULT static_cast<::bio::Result>
 
-#define BIO_RES_TRY(expr) ({ \
-    const auto _tmp_rc = _BIO_AS_RESULT(expr); \
+#define BIO_RES_TRY(...) ({ \
+    const auto _tmp_rc = _BIO_AS_RESULT(__VA_ARGS__); \
     if(_tmp_rc.IsFailure()) { \
         return _tmp_rc; \
     } \
 })
 
-#define BIO_RES_TRY_EXCEPT(expr, except, ...) ({ \
+#define BIO_RES_TRY_EXCEPT(expr, except) ({ \
     auto _tmp_rc = _BIO_AS_RESULT(expr); \
     auto _tmp_expect = _BIO_AS_RESULT(expr); \
     if(_tmp_rc.GetValue() != _tmp_expect.GetValue()) { \

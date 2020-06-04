@@ -83,7 +83,7 @@ namespace bio::mem {
         ZeroCount(GetAllocationTableAddress(), GetAllocationTableCount());
     }
 
-    Result AllocateAligned(u64 alignment, u64 size, void *&out_addr) {
+    Result AllocateAligned(u64 alignment, u64 size, void *&out_address) {
         os::ScopedMutexLock lk(g_AllocationLock);
         BIO_RET_UNLESS(size > 0, result::ResultInvalidSize);
 
@@ -113,7 +113,7 @@ namespace bio::mem {
                     // Create an allocation info entry, and return the address.
                     empty_alloc_info->address = base_addr;
                     empty_alloc_info->size = size;
-                    out_addr = reinterpret_cast<void*>(base_addr);
+                    out_address = reinterpret_cast<void*>(base_addr);
                     return ResultSuccess;
                 }
                 else {
@@ -130,13 +130,14 @@ namespace bio::mem {
         return result::ResultOutOfMemory;
     }
 
-    void Free(void *ptr) {
+    void Free(void *address) {
         os::ScopedMutexLock lk(g_AllocationLock);
+        const auto addr64 = reinterpret_cast<u64>(address);
         auto alloc_table_addr = GetAllocationTableAddress();
         for(u64 i = 0; i < GetAllocationTableCount(); i++) {
             auto alloc_info = &alloc_table_addr[i];
             // Find the address's allocation info, and clear it.
-            if(alloc_info->address == reinterpret_cast<u64>(ptr)) {
+            if(alloc_info->address == addr64) {
                 alloc_info->Clear();
             }
         }

@@ -13,7 +13,7 @@ namespace bio::dyn {
     
     Result LoadRawModule(void *base, mem::SharedObject<Module> &out_module) {
         mem::SharedObject<Module> mod;
-        BIO_RES_TRY(mem::NewShared<Module>(mod));
+        BIO_RES_TRY(mem::NewShared(mod));
         BIO_RES_TRY(mod->LoadRaw(base));
         BIO_RES_TRY(mod->LoadBase());
 
@@ -24,7 +24,7 @@ namespace bio::dyn {
 
     Result LoadNroModule(void *nro_buf, bool is_global, mem::SharedObject<Module> &out_module) {
         mem::SharedObject<Module> mod;
-        BIO_RES_TRY(mem::NewShared<Module>(mod));
+        BIO_RES_TRY(mem::NewShared(mod));
         BIO_RES_TRY(mod->LoadFromNro(nro_buf, is_global));
         BIO_RES_TRY(mod->LoadBase());
 

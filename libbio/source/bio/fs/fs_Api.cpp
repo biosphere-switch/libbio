@@ -194,7 +194,7 @@ namespace bio::fs {
         }
 
         mem::SharedObject<File> file;
-        BIO_RES_TRY(mem::NewShared<File>(file, fsp_file));
+        BIO_RES_TRY(mem::NewShared(file, fsp_file));
 
         if(static_cast<bool>(mode & service::fsp::FileOpenMode::Append)) {
             // If opening as append mode, set position at the end of the file by default.
@@ -261,7 +261,7 @@ namespace bio::fs {
         BIO_RES_TRY(dev.fs->OpenDirectory(fsp_path, sizeof(fsp_path), mode, fsp_dir));
 
         mem::SharedObject<Directory> dir;
-        BIO_RES_TRY(mem::NewShared<Directory>(dir, fsp_dir));
+        BIO_RES_TRY(mem::NewShared(dir, fsp_dir));
 
         out_directory = util::Move(dir);
         return ResultSuccess;

@@ -161,10 +161,10 @@ namespace bio::mem {
         return (l.Get() != r.Get());
     }
 
-    template<typename T, typename ...Args>
+    template<u64 Alignment = NoAlignment, typename T, typename ...Args>
     inline Result NewShared(SharedObject<T> &out_obj, Args &&...args) {
         T *obj;
-        BIO_RES_TRY(New<T>(obj, args...));
+        BIO_RES_TRY(New<Alignment, T>(obj, args...));
         
         out_obj = util::Move(SharedObject<T>(obj));
         return ResultSuccess;

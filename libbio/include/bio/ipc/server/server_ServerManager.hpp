@@ -38,7 +38,7 @@ namespace bio::ipc::server {
             template<typename S, typename ...SArgs>
             static inline Result NewServer(Server *&out_server, SArgs &&...s_args) {
                 S *server;
-                BIO_RES_TRY(mem::New<S>(server, s_args...));
+                BIO_RES_TRY(mem::New(server, s_args...));
 
                 out_server = reinterpret_cast<Server*>(server);
                 return ResultSuccess;
@@ -205,7 +205,7 @@ namespace bio::ipc::server {
                 Server *server;
                 BIO_RES_TRY(NewServer<S>(server, s_args...));
 
-                BIO_RES_TRY(mem::New<ServerObject>(out_obj, server, handle, handle_type, is_mitm, name, &CallHandler<S>, &DeleteServer<S>));
+                BIO_RES_TRY(mem::New(out_obj, server, handle, handle_type, is_mitm, name, &CallHandler<S>, &DeleteServer<S>));
 
                 return ResultSuccess;
             }

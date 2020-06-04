@@ -38,7 +38,7 @@ namespace bio::os {
         const bool owns_stack = stack == nullptr;
         
         mem::SharedObject<Thread> thread;
-        BIO_RES_TRY(mem::NewShared<Thread>(thread, entry, entry_arg, stack, stack_size, owns_stack));
+        BIO_RES_TRY(mem::NewShared(thread, entry, entry_arg, stack, stack_size, owns_stack));
         BIO_RES_TRY(thread->EnsureCreated(priority, cpu_id));
 
         thread->SetName(name);
