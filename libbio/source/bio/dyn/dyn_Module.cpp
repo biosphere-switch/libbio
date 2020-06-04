@@ -58,13 +58,13 @@ namespace bio::dyn {
         const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
     
         void *nrr_buf;
-        BIO_RES_TRY(mem::PageAllocate(nrr_size, nrr_buf));
+        BIO_RES_TRY(mem::Allocate<mem::PageAlignment>(nrr_size, nrr_buf));
 
         nrr::InitializeHeader(nrr_buf, nrr_size, cur_program_id, 1);
         nrr::SetNroHashAt(nrr_buf, nro_data, nro_size, 0);
 
         void *bss_buf;
-        BIO_RES_TRY(mem::PageAllocate(bss_size, bss_buf));
+        BIO_RES_TRY(mem::Allocate<mem::PageAlignment>(bss_size, bss_buf));
 
         BIO_RES_TRY(service::ro::RoServiceSession->LoadNrr(nrr_buf, nrr_size));
 

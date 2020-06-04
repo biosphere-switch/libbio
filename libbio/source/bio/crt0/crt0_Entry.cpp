@@ -25,9 +25,8 @@ namespace bio::crt0 {
     // Can be used to handle exceptions
     __attribute__((weak))
     void ExceptionHandler(ExceptionDescription desc) {
-        // TODO: any IPC here seems to fail - why?
-        // By default
         svc::ReturnFromException(os::result::ResultUnhandledException);
+        __builtin_unreachable();
         while(true) {}
     }
 
@@ -73,8 +72,8 @@ namespace bio::crt0 {
             u32 page_info;
             BIO_DIAG_RES_ASSERT(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
 
-            BIO_DIAG_RES_ASSERT(g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false));
-            tls->thread_ref = &g_MainThread;
+            g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false);
+            tls->thread_addr = &g_MainThread;
         }
 
         Result SetSystemVersion(u32 hbl_hos_version) {
@@ -118,11 +117,6 @@ namespace bio::crt0 {
         const auto has_exception = (x0_v != nullptr) && (x1_v != -1);
         const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
 
-        if(has_exception) {
-            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
-            ExceptionHandler(desc);
-        }
-
         auto main_thread_handle = static_cast<u32>(x1_v);
 
         // Set exit function (svc::ExitProcess is used by default)
@@ -159,19 +153,24 @@ namespace bio::crt0 {
             }
         }
 
+        // Prepare TLS and main thread context
+        SetupTlsMainThread(main_thread_handle);
+
+        if(has_exception) {
+            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
+            ExceptionHandler(desc);
+        }
+
         // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts)
         void *actual_heap_address;
         u64 actual_heap_size;
         BIO_DIAG_RES_ASSERT(InitializeHeap(heap_address, g_HeapSize, actual_heap_address, actual_heap_size));
 
-        // Prepare TLS and main thread context
-        SetupTlsMainThread(main_thread_handle);
-
         // Initialize memory allocator.
         mem::Initialize(actual_heap_address, actual_heap_size);
 
         // Set system version.
-        BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
+        // BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
 
         // Load self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);

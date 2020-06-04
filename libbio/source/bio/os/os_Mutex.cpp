@@ -3,6 +3,8 @@
 
 namespace bio::os {
 
+    // Note: grabbed from libnx's mutex implementation (and similar to N's).
+
     namespace {
 
         constexpr u32 HandleWaitMask = 0x40000000;
@@ -94,7 +96,6 @@ namespace bio::os {
             }
 
             ClearExclusive();
-
             return false;
         }
 

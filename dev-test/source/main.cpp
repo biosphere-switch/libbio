@@ -15,6 +15,19 @@ using namespace bio;
 
 BIO_CRT0_DEFINE_MODULE_NAME("dev-test");
 
+namespace bio::crt0 {
+
+    u8 stacked_heap[0x20000];
+
+    Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
+        mem::ZeroArray(stacked_heap);
+        out_heap_address = stacked_heap;
+        out_size = sizeof(stacked_heap);
+        return ResultSuccess;
+    };
+
+}
+
 namespace bio::diag {
 
     auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::ProcessExit;
@@ -94,7 +107,7 @@ void AccMitmMain() {
     BIO_DIAG_RES_ASSERT(f->Write(buf, buf_len)); \
 })
 
-void Main() {
+void FsMain() {
     BIO_DIAG_LOG("Main()");
 
     BIO_DIAG_RES_ASSERT(service::fsp::FileSystemServiceSession.Initialize());
@@ -113,4 +126,23 @@ void Main() {
     BIO_DIAG_LOGF("Type: %s", (type == service::fsp::DirectoryEntryType::Directory) ? "Directory" : "File");
 
     BIO_DIAG_LOG("Done");
+}
+
+template<u64 Addr, typename ...Args>
+inline void CrashLog(Args ...args) {
+    ((void(*)(u64, Args..., u64))Addr)(0x1234, args..., 0xABCD);
+}
+
+void thr(void*) {
+    BIO_DIAG_LOG("Crashing...");
+    CrashLog<0xBEBA>();
+}
+
+void Main() {
+    mem::SharedObject<os::Thread> thread;
+    BIO_DIAG_RES_ASSERT(os::Thread::Create(&thr, nullptr, nullptr, 0x1000, 0x2B, -2, "Thread-2", thread));
+    BIO_DIAG_RES_ASSERT(thread->Start());
+    while(true) {
+        svc::SleepThread(100'000'000);
+    }
 }

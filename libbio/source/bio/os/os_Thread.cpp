@@ -10,7 +10,7 @@ namespace bio::os {
 
             // Set thread in thread context.
             auto tls = os::GetThreadLocalStorage();
-            tls->thread_ref = thread;
+            tls->thread_addr = thread;
 
             // Call actual entry.
             thread->entry(thread->entry_arg);

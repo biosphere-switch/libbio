@@ -1,6 +1,6 @@
 # libbio
 
-libbio is Biosphere's userland homebrew library.
+libbio is Biosphere's userland homebrew library (64-bit only, at least for now).
 
 The library has literally zero dependencies - not even standard C/C++ libraries or headers. Therefore, it provides its own implementations of common C/C++ features (`mem:::SharedObject`, `util::SPrintf`). Some functions which are often internally used by the compiler, like `memcpy` or `memset`, aren't implemented, and using code which makes the compiler make use of them should be avoided (`SomeStruct var = {};` would imply a `memset` call, for instance!).
 

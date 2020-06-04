@@ -9,14 +9,15 @@ namespace bio::ipc::server {
         os::Mutex g_MitmQueryLock;
         bool g_MitmQueryThreadLaunched = false;
 
-        void MitmQueryThread(void*) {
-            g_MitmQueryManager.LoopProcess();
+        void MitmQueryThread(void *manager_v) {
+            auto manager = reinterpret_cast<ServerManager*>(manager_v);
+            manager->LoopProcess();
         }
 
         Result LaunchMitmQueryThread() {
             os::ScopedMutexLock lk(g_MitmQueryLock);
             if(!g_MitmQueryThreadLaunched) {
-                BIO_RES_TRY(os::Thread::Create(&MitmQueryThread, nullptr, nullptr, 0x4000, 27, -2, "MitmQueryThread", g_MitmQueryThread));
+                BIO_RES_TRY(os::Thread::Create(&MitmQueryThread, &g_MitmQueryManager, nullptr, 0x4000, 27, -2, "MitmQueryThread", g_MitmQueryThread));
                 BIO_RES_TRY(g_MitmQueryThread->Start());
                 g_MitmQueryThreadLaunched = true;
             }

@@ -84,7 +84,6 @@ namespace bio::service {
                 return this->GetResult();
             }
 
-
     };
 
 }

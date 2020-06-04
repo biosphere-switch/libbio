@@ -96,13 +96,13 @@ namespace bio::fs {
             _WRITE_PATH(Nul);
         }
 
-        util::LinkedList<Device> g_MountedDevices;
+        util::LinkedList<Device> g_Devices;
         os::Mutex g_DevicesLock;
 
         bool FindDeviceByName(PathName name, Device &out_dev) {
             os::ScopedMutexLock lk(g_DevicesLock);
-            for(u32 i = 0; i < g_MountedDevices.GetSize(); i++) {
-                auto &device = g_MountedDevices.GetAt(i);
+            for(u32 i = 0; i < g_Devices.GetSize(); i++) {
+                auto &device = g_Devices.GetAt(i);
                 if(device.root_name.Equals(name)) {
                     out_dev = device;
                     return true;
@@ -113,14 +113,14 @@ namespace bio::fs {
 
     }
 
-    Result MountFileSystem(const char *name, mem::SharedObject<service::fsp::FileSystem> fs) {
+    Result MountDevice(const char *name, mem::SharedObject<service::fsp::FileSystem> fs) {
         os::ScopedMutexLock lk(g_DevicesLock);
         Device fs_dev;
         fs_dev.fs = fs;
         fs_dev.root_name.SetName(name);
         fs_dev.root_name.type = PathNameType::Root;
 
-        g_MountedDevices.PushBack(util::Move(fs_dev));
+        g_Devices.PushBack(util::Move(fs_dev));
         return ResultSuccess;
     }
 
@@ -130,8 +130,19 @@ namespace bio::fs {
         mem::SharedObject<service::fsp::FileSystem> sd_fs;
         BIO_RES_TRY(service::fsp::FileSystemServiceSession->OpenSdCardFileSystem(sd_fs));
         
-        BIO_RES_TRY(MountFileSystem(name, sd_fs));
+        BIO_RES_TRY(MountDevice(name, sd_fs));
         return ResultSuccess;
+    }
+
+    void UnmountDevice(const char *name) {
+        os::ScopedMutexLock lk(g_DevicesLock);
+        for(u32 i = 0; i < g_Devices.GetSize(); i++) {
+            auto &device = g_Devices.GetAt(i);
+            if(util::Strcmp(name, device.root_name.name) == 0) {
+                g_Devices.PopAt(i);
+                break;
+            }
+        }
     }
 
     Result CreateFile(const char *path, service::fsp::FileAttribute option, u64 size) {
