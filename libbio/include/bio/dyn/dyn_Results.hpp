@@ -11,11 +11,11 @@ namespace bio::dyn::result {
     BIO_RDEF_DEFINE_RES(DuplicatedDtEntry, 3);
     BIO_RDEF_DEFINE_RES(InvalidSymEnt, 4);
     BIO_RDEF_DEFINE_RES(InvalidModuleState, 5);
-    BIO_RDEF_DEFINE_RES(InvalidRelocEnt, 6);
-    BIO_RDEF_DEFINE_RES(InvalidRelocTableSize, 7);
+    BIO_RDEF_DEFINE_RES(InvalidRelocationEntry, 6);
+    BIO_RDEF_DEFINE_RES(InvalidRelocationTableSize, 7);
     BIO_RDEF_DEFINE_RES(RelaUnsupportedSymbol, 8);
-    BIO_RDEF_DEFINE_RES(UnrecognizedRelocType, 9);
-    BIO_RDEF_DEFINE_RES(InvalidRelocTableType, 10);
+    BIO_RDEF_DEFINE_RES(UnrecognizedRelocationType, 9);
+    BIO_RDEF_DEFINE_RES(InvalidRelocationTableType, 10);
     BIO_RDEF_DEFINE_RES(NeedsSymTab, 11);
     BIO_RDEF_DEFINE_RES(NeedsStrTab, 12);
     BIO_RDEF_DEFINE_RES(CouldNotResolveSymbol, 13);

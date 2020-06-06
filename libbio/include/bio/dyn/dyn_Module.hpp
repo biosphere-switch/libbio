@@ -75,9 +75,9 @@ namespace bio::dyn {
             Result LoadRaw(void *base);
 
             Result Scan();
-            Result TryResolveSymbol(const char *find_name, u64 find_name_hash, elf::Sym *&def, Module *defining_module_ptr, bool require_global);
-            Result ResolveLoadSymbol(const char *find_name, elf::Sym *&def, Module *defining_module_ptr);
-            Result ResolveDependencySymbol(const char *find_name, elf::Sym *&def, Module *defining_module_ptr);
+            Result TryResolveSymbol(const char *find_name, u64 find_name_hash, elf::Sym *&def, Module *&defining_module_ptr, bool require_global);
+            Result ResolveLoadSymbol(const char *find_name, elf::Sym *&def, Module *&defining_module_ptr);
+            Result ResolveDependencySymbol(const char *find_name, elf::Sym *&def, Module *&defining_module_ptr);
             Result RunRelocationTable(elf::Tag offset_tag, elf::Tag size_tag);
             Result Relocate();
             Result Initialize();
@@ -89,7 +89,7 @@ namespace bio::dyn {
                 this->Unload();
             }
 
-            Result ResolveSymbolBase(const char *name, void *&out_symbol);
+            Result DoResolveSymbol(const char *name, void *&out_symbol);
 
         public:
             Module() : state(ModuleState::Invalid), input(), /*dependencies(),*/ dynamic(nullptr), symtab(nullptr), strtab(nullptr), hash(nullptr) {}
@@ -106,7 +106,12 @@ namespace bio::dyn {
             template<typename F>
             inline Result ResolveSymbol(const char *name, F &out_symbol) {
                 static_assert(util::IsPointer<F>, "Invalid symbol type - must be a function pointer, like void(*)()");
-                return this->ResolveSymbolBase(name, reinterpret_cast<void*&>(out_symbol));
+
+                void *symbol;
+                BIO_RES_TRY(this->DoResolveSymbol(name, symbol));
+
+                out_symbol = reinterpret_cast<F>(symbol);
+                return ResultSuccess;
             }
 
     };

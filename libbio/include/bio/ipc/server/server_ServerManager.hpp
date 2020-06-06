@@ -185,7 +185,6 @@ namespace bio::ipc::server {
 
             Result ProcessSignaledHandle(u32 index) {
                 auto &handle = this->handles.GetAt(index);
-
                 switch(handle.type) {
                     case WaitHandleType::Server: {
                         BIO_RES_TRY(this->ProcessServerHandle(index));

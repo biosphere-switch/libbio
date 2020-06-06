@@ -11,19 +11,15 @@
 #include <bio/service/service_Services.hpp>
 
 // Entrypoint
+// TODO: extern "C", multiple entrypoints...?
 
 void Main();
 
 namespace bio::crt0 {
 
-    extern ExitFunction g_ExitFunction;
-
-    // Will be used if hbl doesn't give us a heap
-    __attribute__((weak))
-    u64 g_HeapSize = 0x20000000;
-
     // Can be used to handle exceptions
     __attribute__((weak))
+    __attribute__((noreturn))
     void ExceptionHandler(ExceptionDescription desc) {
         svc::ReturnFromException(os::result::ResultUnhandledException);
         __builtin_unreachable();
@@ -32,6 +28,7 @@ namespace bio::crt0 {
 
     __attribute__((weak))
     Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
+        // By default, use svc::SetHeapSize unless hbl gave us a heap address and size. 
         if(heap_address == nullptr) {
             BIO_RES_TRY(svc::SetHeapSize(out_heap_address, heap_size));
         }
@@ -44,18 +41,21 @@ namespace bio::crt0 {
 
     namespace {
 
+        i32 FakeSPrintf(char* buffer, const char* format, ...) {
+            BIO_DIAG_LOGF("Fake sprintf!");
+            while(true) {}
+            return -1;
+        }
+
+        // Default heap size (128MB)
+        constexpr u64 DefaultHeapSize = 0x8000000;
+
         os::Thread g_MainThread;
 
-        // Note: placing this as a separate function - if Main() or any calls inside the Entry function exited, this shared pointer wouldn't release properly.
+        // Note: since Entry() call will never exit the module object will never dispose, thus it wouldn't be properly cleaned up (AtExit would be called before it's even cleaned)
         void RegisterBaseModule(void *aslr_base_address) {
             mem::SharedObject<dyn::Module> mod;
             BIO_DIAG_RES_ASSERT(dyn::LoadRawModule(aslr_base_address, mod));
-        }
-
-        void SetExitFunction(crt0::ExitFunction lr) {
-            if(lr != nullptr) {
-                g_ExitFunction = lr;
-            }
         }
 
         void ClearBss(void *bss_start, void *bss_end) {
@@ -100,11 +100,11 @@ namespace bio::crt0 {
     }
 
     // Similar to offical rtld functionality
-    // x0 and x1 might be different things, depending on the context (data from NRO, exception handling data...)
 
-    // When launched from hbloader (as a NRO), x0 == hbl config entries and x1 == -1
-    // When launched as a normal process (NSO), x0 == nullptr, and x1 == main thread handle
-    // When re-launched due to exception handling, x0 == exception description (error type) and x1 == stack top
+    // x0 and x1 might be different things, depending on the context (data from NRO, exception handling data...):
+    // - When launched from hbloader/hbmenu (as a NRO), x0 == hbl config entries and x1 == -1
+    // - When launched as a normal process (as a NSO), x0 == nullptr, and x1 == main thread handle
+    // - When re-launched due to exception handling, x0 == exception description (error type) and x1 == stack top
 
     __attribute__((weak))
     void Entry(void *x0_v, u64 x1_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
@@ -119,10 +119,13 @@ namespace bio::crt0 {
 
         auto main_thread_handle = static_cast<u32>(x1_v);
 
-        // Set exit function (svc::ExitProcess is used by default)
-        SetExitFunction(lr);
+        // Set exit function if we're given a valid one (svc::ExitProcess is used by default)
+        if(lr != nullptr) {
+            SetExitFunction(lr);
+        }
 
-        void *heap_address = nullptr;
+        void *base_heap_address = nullptr;
+        auto base_heap_size = DefaultHeapSize;
         u32 hbl_hos_version = 0;
 
         if(is_hbl_nro) {
@@ -134,8 +137,8 @@ namespace bio::crt0 {
                 }
                 switch(key) {
                     case hbl::ABIConfigKey::OverrideHeap: {
-                        heap_address = reinterpret_cast<void*>(arg->value[0]);
-                        g_HeapSize = arg->value[1];
+                        base_heap_address = reinterpret_cast<void*>(arg->value[0]);
+                        base_heap_size = arg->value[1];
                         break;
                     }
                     case hbl::ABIConfigKey::MainThreadHandle: {
@@ -153,24 +156,29 @@ namespace bio::crt0 {
             }
         }
 
-        // Prepare TLS and main thread context
+        // Setup TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
 
+        // If we are told to handle an exception, handle it.
         if(has_exception) {
             auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
             ExceptionHandler(desc);
         }
 
-        // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts)
+        // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts, like sysmodules/processes using fake stack heaps)
         void *actual_heap_address;
         u64 actual_heap_size;
-        BIO_DIAG_RES_ASSERT(InitializeHeap(heap_address, g_HeapSize, actual_heap_address, actual_heap_size));
+        BIO_DIAG_RES_ASSERT(InitializeHeap(base_heap_address, base_heap_size, actual_heap_address, actual_heap_size));
+
+        // Ensure heap address and size are valid.
+        BIO_DIAG_ASSERT(actual_heap_address != nullptr);
+        BIO_DIAG_ASSERT(actual_heap_size > 0);
 
         // Initialize memory allocator.
         mem::Initialize(actual_heap_address, actual_heap_size);
 
         // Set system version.
-        // BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
+        BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
 
         // Load self as a module (for init and fini arrays, etc)
         RegisterBaseModule(aslr_base_address);
@@ -178,6 +186,7 @@ namespace bio::crt0 {
         // Call code entrypoint.
         Main();
 
+        // Here is where N/libnx/libtransistor would dispose global services, modules, etc.
         // Note: no disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
 
         // Successful exit by default.

@@ -137,7 +137,7 @@ namespace bio::dyn {
         return ResultSuccess;
     }
 
-    Result Module::TryResolveSymbol(const char *find_name, u64 find_name_hash, elf::Sym *&def, Module *defining_module_ptr, bool require_global){
+    Result Module::TryResolveSymbol(const char *find_name, u64 find_name_hash, elf::Sym *&def, Module *&defining_module_ptr, bool require_global){
         BIO_RET_IF(require_global && !this->input.is_global, result::ResultCouldNotResolveSymbol);
         BIO_RET_UNLESS(this->symtab != nullptr, result::ResultCouldNotResolveSymbol);
         BIO_RET_UNLESS(this->strtab != nullptr, result::ResultCouldNotResolveSymbol);
@@ -160,7 +160,7 @@ namespace bio::dyn {
         return ResultSuccess;
     }
 
-    Result Module::ResolveLoadSymbol(const char *find_name, elf::Sym *&def, Module *defining_module_ptr) {
+    Result Module::ResolveLoadSymbol(const char *find_name, elf::Sym *&def, Module *&defining_module_ptr) {
         auto hash = elf::HashString(find_name);
 
         for(u32 i = 0; i < g_Modules.GetSize(); i++) {
@@ -171,13 +171,15 @@ namespace bio::dyn {
         return this->TryResolveSymbol(find_name, hash, def, defining_module_ptr, false);
     }
 
-    Result Module::ResolveDependencySymbol(const char *find_name, elf::Sym *&def, Module *defining_module_ptr) {
+    Result Module::ResolveDependencySymbol(const char *find_name, elf::Sym *&def, Module *&defining_module_ptr) {
         auto hash = elf::HashString(find_name);
-        auto rc = this->TryResolveSymbol(find_name, hash, def, defining_module_ptr, false);
+        BIO_RES_TRY(this->TryResolveSymbol(find_name, hash, def, defining_module_ptr, false));
+        /*
         BIO_RES_TRY_EXCEPT(rc, result::ResultCouldNotResolveSymbol);
         if(rc.IsSuccess()) {
             return rc;
         }
+        */
 
         /*
         for(u32 i = 0; i < this->dependencies.GetSize(); i++) {
@@ -225,7 +227,7 @@ namespace bio::dyn {
                 rc = this->dynamic->FindValue(elf::Tag::RelEntrySize, ent_size);
                 BIO_RES_TRY_EXCEPT(rc, result::ResultMissingDtEntry);
                 if(rc.IsSuccess()) {
-                    BIO_RET_UNLESS(ent_size == sizeof(elf::Rela), result::ResultInvalidRelocEnt);
+                    BIO_RET_UNLESS(ent_size == sizeof(elf::Rela), result::ResultInvalidRelocationEntry);
                 }
                 else {
                     ent_size = sizeof(elf::Rela);
@@ -236,7 +238,7 @@ namespace bio::dyn {
                 rc = this->dynamic->FindValue(elf::Tag::RelEntrySize, ent_size);
                 BIO_RES_TRY_EXCEPT(rc, result::ResultMissingDtEntry);
                 if(rc.IsSuccess()) {
-                    BIO_RET_UNLESS(ent_size == sizeof(elf::Rel), result::ResultInvalidRelocEnt);
+                    BIO_RET_UNLESS(ent_size == sizeof(elf::Rel), result::ResultInvalidRelocationEntry);
                 }
                 else {
                     ent_size = sizeof(elf::Rel);
@@ -244,10 +246,10 @@ namespace bio::dyn {
                 break;
             }
             default:
-                return result::ResultInvalidRelocTableType;
+                return result::ResultInvalidRelocationTableType;
         }
 
-        BIO_RET_UNLESS((table_size % ent_size) == 0, result::ResultInvalidRelocTableSize);
+        BIO_RET_UNLESS((table_size % ent_size) == 0, result::ResultInvalidRelocationTableSize);
 
         auto raw_table8 = reinterpret_cast<u8*>(raw_table);
         for(u64 offset = 0; offset < table_size; offset += ent_size) {
@@ -311,7 +313,7 @@ namespace bio::dyn {
                     break;
                 }
                 default:
-                    return result::ResultUnrecognizedRelocType;
+                    return result::ResultUnrecognizedRelocationType;
             }
         }
         return ResultSuccess;
@@ -336,6 +338,7 @@ namespace bio::dyn {
         auto rc = this->dynamic->FindOffset(elf::Tag::InitArray, init_array_ptr, this->input.base);
         BIO_RES_TRY_EXCEPT(rc, result::ResultMissingDtEntry);
         BIO_RET_UNLESS(rc.IsSuccess(), ResultSuccess);
+        
         BIO_RES_TRY(this->dynamic->FindValue(elf::Tag::InitArraySize, init_array_size));
 
         auto init_array = reinterpret_cast<InitArray>(init_array_ptr);
@@ -386,12 +389,12 @@ namespace bio::dyn {
         }
     }
 
-    Result Module::ResolveSymbolBase(const char *name, void *&out_symbol) {
-        elf::Sym *def = nullptr;
-        auto def_mod_ptr = this;
-        BIO_RES_TRY(this->ResolveDependencySymbol(name, def, def_mod_ptr));
+    Result Module::DoResolveSymbol(const char *name, void *&out_symbol) {
+        elf::Sym *sym;
+        Module *def_mod_ptr;
+        BIO_RES_TRY(this->ResolveDependencySymbol(name, sym, def_mod_ptr));
 
-        out_symbol = reinterpret_cast<void*>(reinterpret_cast<u8*>(def_mod_ptr->input.base) + def->value);
+        out_symbol = reinterpret_cast<void*>(reinterpret_cast<u8*>(def_mod_ptr->input.base) + sym->value);
         return ResultSuccess;
     }
 

@@ -32,22 +32,28 @@ namespace bio::crt0 {
             g_AtExitEntries.Clear();
         }
 
-    }
+        // Use svc::ExitProcess by default
+        auto g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
 
-    // Use svc::ExitProcess by default
-    auto g_ExitFunction = reinterpret_cast<ExitFunction>(&svc::ExitProcess);
+    }
 
     void RegisterAtExit(AtExitFunction fn, void *arg) {
         os::ScopedMutexLock lk(g_AtExitLock);
         g_AtExitEntries.PushBack({ fn, arg });
     }
 
+    void SetExitFunction(ExitFunction fn) {
+        g_ExitFunction = fn;
+    }
+
+    __attribute__((noreturn))
     void Exit(i32 error_code) {
         // Run all entries
         ProcessAtExitEntries();
 
         // g_ExitFunction must have a valid value, which is set by the CRT0
         g_ExitFunction(error_code);
+        __builtin_unreachable();
     }
 
     extern "C" {

@@ -10,6 +10,10 @@ namespace bio::crt0 {
     constexpr i32 ExitSuccess = 0;
 
     void RegisterAtExit(AtExitFunction fn, void *arg = nullptr);
+
+    void SetExitFunction(ExitFunction fn);
+
+    __attribute__((noreturn))    
     void Exit(i32 error_code);
 
 }
