@@ -193,14 +193,12 @@ namespace bio::gpu {
         BIO_RES_TRY(g_ViApplicationDisplayService->GetRelayService(g_HOSBinderDriver));
 
         g_Initialized = true;
-        DEBUG_LOG("Registering gpu::Finalize...");
         crt0::RegisterAtExit(reinterpret_cast<crt0::AtExitFunction>(&Finalize), nullptr);
         return ResultSuccess;
     }
 
     void Finalize() {
         if(g_Initialized) {
-            DEBUG_LOG("Finalizing GPU...");
             mem::Free(g_TransferMemory);
             svc::CloseHandle(g_TransferMemoryHandle);
             g_TransferMemoryHandle = InvalidHandle;
