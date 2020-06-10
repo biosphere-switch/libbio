@@ -15,7 +15,6 @@ namespace bio::gpu {
     Result GetNvHostFd(u32 &out_fd);
     Result GetNvHostCtrlFd(u32 &out_fd);
 
-    Result CreateLayerSurface(const char *display_name, u64 aruid, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface);
     Result CreateStrayLayerSurface(const char *display_name, service::vi::LayerFlags stray_layer_flags, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface);
 
 }

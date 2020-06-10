@@ -6,6 +6,8 @@ The library has literally zero dependencies - not even standard C/C++ libraries 
 
 The library makes use of C++20 (gnu++20 in clang), recently released, since it makes use of concepts due to the lack of certain useful but quite annoying template stuff in C++ (std::is_base_of).
 
+> TODO: improve README and docs...
+
 ## State
 
 The library is a work-in-progress project. Check what's been acomplished and what still needs to be acomplished below:
@@ -38,21 +40,53 @@ Submodules:
 
 ## TODO
 
-- Fully implement serverside IPC: buffers, domains
+- Examples:
 
-- Implement serverside MITM IPC (get it to work)
+  - Migrate current development test projects as proper examples
 
-- Fully implement CRT0 initialization: homebrew API processing, argv
+  - More new examples
+
+- Fully Implement serverside IPC: command arguments (buffers, objects), mitm support (currently broken), domain support...
+
+- Fully implement CRT0 initialization:
+
+  - hbl ABI, read everything hbl sends us
+
+  - Argv parsing and reading
 
 - Extend exception handling: get registers like libnx does, etc.
 
-- Add several services (some interesting/relevant ones: applet, ns, account...)
+- Implement sync-related types:
 
-- Implement sync-related types: condition variable
+  - Condition variables
 
 - Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
 
-- Extend GPU implementation: implement more vi/nv commands, etc.
+  - Threads (almost finished)
+
+  - Events
+
+  - Shared memory
+
+  - Transfer memory (SVC implemented)
+
+  - Waitable system (currently doing raw SVC WaitSync calls)
+
+- Extend GPU implementation:
+
+  - More layer types (normal layers with ARUIDs, managed layers, ...)
+
+  - Make use of other NVIDIA components if necessary (maps, address spaces, ...)
+
+- Implement input:
+
+  - Implement hid service
+
+  - Add a simplified input implementation under `::input` namespace (like old libbio)
+
+- Implement applet service (has a lot of useful and essential commands, library applet launching, ...)
+
+- RomFs support? (follow homebrew standards and read appended NACP/icon/RomFs data in the NRO file path, via argv[0])
 
 ## Done
 
@@ -86,10 +120,8 @@ Submodules:
 
 - System version getting support, supporting both hbl HosVersion and set:sys service.
 
-- Implement graphics/GPU, along with nv, vi and nvnflinger/dispdrv services and NVIDIA driver stuff (binder, parcels, types...)
+- Implement graphics/GPU, along with nv, vi and nvnflinger/dispdrv services and NVIDIA driver stuff (binder, parcels, maps, events, types...)
 
-## Future plans (maybe)
+- Added memory data cache utilities (grabbed from libnx)
 
-- Support more hw-accelerated crypto (not something necessary for now)
-
-- 32-bit support?
+- Implemented a dynamic list type - doubly linked lists, supporting iteration and quite easy to use.

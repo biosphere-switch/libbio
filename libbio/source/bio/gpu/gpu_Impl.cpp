@@ -12,6 +12,7 @@ namespace bio::gpu {
         service::nv::DrvServiceType g_NvDrvServiceType;
         service::vi::RootServiceType g_ViRootServiceType;
         mem::SharedObject<service::vi::ApplicationDisplayService> g_ViApplicationDisplayService;
+        mem::SharedObject<service::vi::SystemDisplayService> g_ViSystemDisplayService;
         mem::SharedObject<service::dispdrv::HOSBinderDriver> g_HOSBinderDriver;
 
         void *g_TransferMemory;
@@ -192,6 +193,8 @@ namespace bio::gpu {
 
         BIO_RES_TRY(g_ViApplicationDisplayService->GetRelayService(g_HOSBinderDriver));
 
+        BIO_RES_TRY(g_ViApplicationDisplayService->GetSystemDisplayService(g_ViSystemDisplayService));
+
         g_Initialized = true;
         crt0::RegisterAtExit(reinterpret_cast<crt0::AtExitFunction>(&Finalize), nullptr);
         return ResultSuccess;
@@ -246,12 +249,6 @@ namespace bio::gpu {
     Result GetNvHostCtrlFd(u32 &out_fd) {
         BIO_RET_UNLESS(g_Initialized, result::ResultNotInitialized);
         out_fd = g_NvHostCtrlFd;
-        return ResultSuccess;
-    }
-
-    Result CreateLayerSurface(const char *display_name, u64 aruid, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface) {
-        BIO_RET_UNLESS(g_Initialized, result::ResultNotInitialized);
-        // TODO: support this
         return ResultSuccess;
     }
 

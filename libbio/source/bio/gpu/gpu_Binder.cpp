@@ -16,6 +16,17 @@ namespace bio::gpu {
         return ResultSuccess;
     }
 
+    Result Binder::GetNativeHandle(u32 handle_id, u32 &out_handle) {
+        mem::SharedObject<service::dispdrv::HOSBinderDriver> hos_binder_driver;
+        // TODO: maybe make this non-dependent on ::gpu's HOSBinderDriver session?
+        BIO_RES_TRY(GetHOSBinderDriver(hos_binder_driver));
+
+        BIO_RES_TRY(hos_binder_driver->GetNativeHandle(this->handle, handle_id, out_handle));
+        DEBUG_LOG_FMT("Handle: 0x%X", out_handle);
+        
+        return ResultSuccess;
+    }
+
     Result Binder::DecreaseRefcounts() {
         mem::SharedObject<service::dispdrv::HOSBinderDriver> hos_binder_driver;
         // TODO: maybe make this non-dependent on ::gpu's HOSBinderDriver session?

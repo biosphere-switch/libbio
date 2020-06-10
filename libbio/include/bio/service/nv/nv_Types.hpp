@@ -35,6 +35,8 @@ namespace bio::service::nv {
         NvMapFree = 0xC0180105,
         NvMapParam = 0xC00C0109,
         NvMapGetId = 0xC008010E,
+
+        NvHostCtrlWaitAsync = 0xC00C0016,
     };
 
 }

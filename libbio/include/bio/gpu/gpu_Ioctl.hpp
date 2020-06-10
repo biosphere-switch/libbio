@@ -87,6 +87,19 @@ namespace bio::gpu {
 
         }
 
+        namespace nvhostctrl {
+
+            struct WaitAsync {
+                Fence fence;
+                i32 timeout;
+
+                static constexpr auto Mode = IoctlMode::In;
+                static constexpr auto Id = service::nv::IoctlId::NvHostCtrlWaitAsync;
+                static constexpr auto Fd = IoctlFd::NvHostCtrl;
+            };
+
+        }
+
     }
 
 }

@@ -1,6 +1,7 @@
 
 #pragma once
 #include <bio/mem/mem_Utils.hpp>
+#include <bio/mem/mem_Cache.hpp>
 
 // These are needed to be able to call the constructor via placement new
 

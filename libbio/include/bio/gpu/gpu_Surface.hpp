@@ -21,6 +21,8 @@ namespace bio::gpu {
             Layout layout;
             u64 display_id;
             u64 layer_id;
+            u32 vsync_event_handle;
+            u32 buffer_event_handle;
             bool is_stray_layer;
 
             Result Connect();
@@ -58,6 +60,20 @@ namespace bio::gpu {
                 return this->single_buffer_size;
             }
 
+            Result WaitForVsync() {
+                i32 idx;
+                BIO_RES_TRY(svc::WaitSynchronization(idx, &this->vsync_event_handle, 1, svc::IndefiniteWait));
+                
+                return ResultSuccess;
+            }
+
+            Result WaitForBuffer() {
+                i32 idx;
+                BIO_RES_TRY(svc::WaitSynchronization(idx, &this->buffer_event_handle, 1, svc::IndefiniteWait));
+                
+                return ResultSuccess;
+            }
+
             u32 GetWidth() {
                 return this->qbo.width;
             }
@@ -70,8 +86,9 @@ namespace bio::gpu {
                 return this->graphic_buffer.planes[0].color_format;
             }
 
-            Result DequeueBuffer(void *&out_buffer, i32 &out_slot, bool &has_fence, MultiFence &out_fence);
-            Result QueueBuffer(i32 slot);
+            Result DequeueBuffer(void *&out_buffer, bool is_async, i32 &out_slot, bool &out_has_fences, MultiFence &out_fences);
+            Result WaitFences(MultiFence fences, i32 timeout);
+            Result QueueBuffer(i32 slot, MultiFence fences);
 
     };
 

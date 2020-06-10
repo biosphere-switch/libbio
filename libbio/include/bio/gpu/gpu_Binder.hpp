@@ -21,6 +21,7 @@ namespace bio::gpu {
             }
 
             Result TransactParcel(service::dispdrv::ParcelTransactionId transaction_id, ParcelPayload &payload, u64 payload_size, Parcel &out_response_parcel);
+            Result GetNativeHandle(u32 handle_id, u32 &out_handle);
 
             template<service::dispdrv::ParcelTransactionId Id>
             inline Result DoTransactParcel(Parcel &parcel, Parcel &response_parcel) {
@@ -117,7 +118,7 @@ namespace bio::gpu {
                 return ResultSuccess;
             }
 
-            Result DequeueBuffer(bool is_async, u32 width, u32 height, bool get_frame_timestamps, GraphicsAllocatorUsage usage, i32 &out_slot, bool &out_has_fence, MultiFence &out_fence) {
+            Result DequeueBuffer(bool is_async, u32 width, u32 height, bool get_frame_timestamps, GraphicsAllocatorUsage usage, i32 &out_slot, bool &out_has_fences, MultiFence &out_fences) {
                 Parcel parcel;
                 BIO_RES_TRY(this->BeginTransactParcel(parcel));
 
@@ -130,12 +131,12 @@ namespace bio::gpu {
                 Parcel response_parcel;
                 BIO_RES_TRY(this->DoTransactParcel<service::dispdrv::ParcelTransactionId::DequeueBuffer>(parcel, response_parcel));
                 BIO_RES_TRY(response_parcel.Read(out_slot));
-                u32 has_fence;
-                BIO_RES_TRY(response_parcel.Read(has_fence));
+                u32 has_fences;
+                BIO_RES_TRY(response_parcel.Read(has_fences));
                 
-                out_has_fence = static_cast<bool>(has_fence);
-                if(out_has_fence) {
-                    BIO_RES_TRY(response_parcel.ReadSized(out_fence));
+                out_has_fences = static_cast<bool>(has_fences);
+                if(out_has_fences) {
+                    BIO_RES_TRY(response_parcel.ReadSized(out_fences));
                 }
 
                 BIO_RES_TRY(this->EndTransactParcel(response_parcel));
@@ -154,6 +155,12 @@ namespace bio::gpu {
                 BIO_RES_TRY(response_parcel.Read(out_qbo));
 
                 BIO_RES_TRY(this->EndTransactParcel(response_parcel));
+                return ResultSuccess;
+            }
+
+            Result GetBufferEventHandle(u32 &out_event_handle) {
+                BIO_RES_TRY(this->GetNativeHandle(0xF, out_event_handle));
+
                 return ResultSuccess;
             }
 

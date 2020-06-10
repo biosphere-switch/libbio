@@ -7,6 +7,14 @@ namespace bio::gpu {
     Result Surface::Connect() {
         BIO_RES_TRY(this->binder.Connect(ConnectionApi::Cpu, false, this->qbo));
 
+        // Also get events here.
+        mem::SharedObject<service::vi::ApplicationDisplayService> application_display_srv;
+        BIO_RES_TRY(GetApplicationDisplayService(application_display_srv));
+
+        BIO_RES_TRY(application_display_srv->GetDisplayVsyncEvent(this->display_id, this->vsync_event_handle));
+
+        BIO_RES_TRY(this->binder.GetBufferEventHandle(this->buffer_event_handle));
+
         return ResultSuccess;
     }
 
@@ -112,8 +120,23 @@ namespace bio::gpu {
         return ResultSuccess;
     }
 
-    Result Surface::DequeueBuffer(void *&out_buffer, i32 &out_slot, bool &has_fence, MultiFence &out_fence) {
-        BIO_RES_TRY(this->binder.DequeueBuffer(false, this->graphic_buffer.header.width, this->graphic_buffer.header.height, false, this->graphic_buffer.usage, out_slot, has_fence, out_fence));
+    Result Surface::DequeueBuffer(void *&out_buffer, bool is_async, i32 &out_slot, bool &out_has_fences, MultiFence &out_fences) {
+        if(is_async) {
+            while(true) {
+                BIO_RES_TRY(this->WaitForBuffer());
+                auto rc = this->binder.DequeueBuffer(true, this->graphic_buffer.header.width, this->graphic_buffer.header.height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences);
+                if(rc.IsSuccess()) {
+                    break;
+                }
+                if(rc == result::ResultBinderErrorCodeWouldBlock) {
+                    continue;
+                }
+                BIO_RES_TRY(rc);
+            }
+        }
+        else {
+            BIO_RES_TRY(this->binder.DequeueBuffer(false, this->graphic_buffer.header.width, this->graphic_buffer.header.height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences));
+        }
 
         auto has_requested = this->slot_has_requested.GetAt(out_slot);
         if(!has_requested) {
@@ -129,10 +152,26 @@ namespace bio::gpu {
         return ResultSuccess;
     }
 
-    Result Surface::QueueBuffer(i32 slot) {
+    Result Surface::WaitFences(MultiFence fences, i32 timeout) {
+        for(u32 i = 0; i < fences.fence_count; i++) {
+            ioctl::nvhostctrl::WaitAsync wait_async;
+            wait_async.fence = fences.fences[i];
+            wait_async.timeout = timeout;
+
+            BIO_RES_TRY(Ioctl(wait_async));
+        }
+        return ResultSuccess;
+    }
+
+    Result Surface::QueueBuffer(i32 slot, MultiFence fences) {
         QueueBufferInput qbi = {};
         // The other fields are automatically set to zero.
         qbi.swap_interval = 1;
+        qbi.fence = fences;
+
+        // Flush data cache.
+        const auto buf_size = mem::AlignUp(this->buffer_count * this->single_buffer_size, mem::PageAlignment);
+        mem::FlushDataCache(this->buffer_data, buf_size);
 
         QueueBufferOutput qbo;
         BIO_RES_TRY(this->binder.QueueBuffer(slot, qbi, qbo));

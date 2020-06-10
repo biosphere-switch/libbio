@@ -9,7 +9,7 @@ BIO_CRT0_DEFINE_MODULE_NAME("gpu-test");
 
 namespace bio::diag {
 
-    auto g_DefaultAssertMode = AssertMode::Fatal;
+    auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::Fatal;
 
 }
 
@@ -138,10 +138,10 @@ void Main() {
 
     void *buf;
     i32 slot;
-    bool has_fence;
-    gpu::MultiFence fence;
+    bool has_fences;
+    gpu::MultiFence fences;
     while(true) {
-        BIO_DIAG_RES_ASSERT(surface->DequeueBuffer(buf, slot, has_fence, fence));
+        BIO_DIAG_RES_ASSERT(surface->DequeueBuffer(buf, true, slot, has_fences, fences));
 
         SurfaceBuffer s_buf(reinterpret_cast<u32*>(buf), surface->GetBufferSize(), width, height, surface->GetColorFormat());
         s_buf.Clear(white);
@@ -179,6 +179,7 @@ void Main() {
             y_mult++;
         }
 
-        BIO_DIAG_RES_ASSERT(surface->QueueBuffer(slot));
+        BIO_DIAG_RES_ASSERT(surface->WaitForVsync());
+        BIO_DIAG_RES_ASSERT(surface->QueueBuffer(slot, fences));
     }
 }

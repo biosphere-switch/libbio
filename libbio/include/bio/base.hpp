@@ -25,6 +25,12 @@ static_assert(sizeof(i32) == 4);
 using i64 = signed long long;
 static_assert(sizeof(i64) == 8);
 
+using f32 = float;
+static_assert(sizeof(f32) == 4);
+
+using f64 = double;
+static_assert(sizeof(f64) == 8);
+
 // TODO: future aarch32 support?
 
 #ifdef __aarch64__
