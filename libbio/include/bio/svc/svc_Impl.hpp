@@ -24,8 +24,29 @@ namespace bio::svc {
         u32 pad;
     };
 
+    enum class MemoryPermission : u32 {
+        None = 0,
+        Read = BIO_BITMASK(0),
+        Write = BIO_BITMASK(1),
+        Execute = BIO_BITMASK(2),
+        DontCare = BIO_BITMASK(28),
+    };
+
+    BIO_ENUM_BIT_OPERATORS(MemoryPermission, u32)
+
+    enum class MemoryAttribute : u32 {
+        None = 0,
+        Borrowed = BIO_BITMASK(0),
+        IpcMapped = BIO_BITMASK(1),
+        DeviceMapped = BIO_BITMASK(2),
+        Uncached = BIO_BITMASK(3),
+    };
+
+    BIO_ENUM_BIT_OPERATORS(MemoryAttribute, u32)
+
     Result SetHeapSize(void *&out_addr, u64 size); // 0x01
     Result SetMemoryPermission(void *addr, u64 size, u32 perm); // 0x02
+    Result SetMemoryAttribute(void *addr, u64 size, u32 mask, MemoryAttribute attr); // 0x03
     Result QueryMemory(MemoryInfo &out_info, u32 &out_page_info, u64 address); // 0x06
     void __attribute__((noreturn)) ExitProcess(); // 0x07
     Result CreateThread(Handle &out_handle, ThreadEntrypointFunction entry, void *entry_arg, void *stack_top, i32 priority, i32 cpu_id); // 0x08
@@ -34,6 +55,7 @@ namespace bio::svc {
     void SleepThread(i64 timeout_ns); // 0x0B
     Result GetThreadPriority(i32 &out_priority, Handle handle); // 0x0C
     Result SetThreadPriority(Handle handle, i32 priority); // 0x0D
+    Result CreateTransferMemory(Handle &out_handle, void *address, u64 size, MemoryPermission permission);
     Result CloseHandle(Handle handle); // 0x16
     Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, i64 timeout_ns); // 0x18
     Result ArbitrateLock(u32 wait_tag, u32 *tag_location, u32 self_tag); // 0x1A
@@ -57,8 +79,7 @@ namespace bio::svc {
 
 #define DEBUG_LOG(msg) ::bio::svc::OutputDebugString(msg, BIO_UTIL_STRLEN(msg))
 #define DEBUG_LOG_FMT(fmt, ...) ({ \
-    char msg[0x400]; \
-    ::bio::mem::ZeroArray(msg); \
+    char msg[0x400] = {}; \
     const auto len = static_cast<u32>(::bio::util::SPrintf(msg, fmt, ##__VA_ARGS__)); \
     ::bio::svc::OutputDebugString(msg, len); \
 })

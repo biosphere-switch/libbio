@@ -144,3 +144,11 @@ namespace bio {
 
 #define BIO_RET_IF(expr, ret) BIO_RET_UNLESS(!(expr), ret)
 #define BIO_RET_IF_EX(expr, ...) BIO_RET_UNLESS_EX(!(expr), ##__VA_ARGS__)
+
+#define BIO_ENUM_BIT_OPERATORS(enum_type, base_type) \
+inline constexpr enum_type operator|(enum_type lhs, enum_type rhs) { \
+    return static_cast<enum_type>(static_cast<base_type>(lhs) | static_cast<base_type>(rhs)); \
+} \
+inline constexpr enum_type operator&(enum_type lhs, enum_type rhs) { \
+    return static_cast<enum_type>(static_cast<base_type>(lhs) & static_cast<base_type>(rhs)); \
+}

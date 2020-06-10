@@ -4,7 +4,7 @@
 
 namespace bio::dyn::result {
 
-    BIO_RDEF_MODULE(200);
+    BIO_RDEF_MODULE(2);
 
     BIO_RDEF_DEFINE_RES(InvalidInput, 1);
     BIO_RDEF_DEFINE_RES(MissingDtEntry, 2);

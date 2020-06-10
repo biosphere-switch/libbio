@@ -181,7 +181,7 @@ namespace bio::ipc {
         u32 pad[3];
     };
 
-    enum class BufferAttribute {
+    enum class BufferAttribute : u8 {
         In = BIO_BITMASK(0),
         Out = BIO_BITMASK(1),
         MapAlias = BIO_BITMASK(2),
@@ -192,13 +192,7 @@ namespace bio::ipc {
         MapTransferAllowsNonDevice = BIO_BITMASK(7),
     };
 
-    inline constexpr BufferAttribute operator|(BufferAttribute lhs, BufferAttribute rhs) {
-        return static_cast<BufferAttribute>(static_cast<u8>(lhs) | static_cast<u8>(rhs));
-    }
-
-    inline constexpr BufferAttribute operator&(BufferAttribute lhs, BufferAttribute rhs) {
-        return static_cast<BufferAttribute>(static_cast<u8>(lhs) & static_cast<u8>(rhs));
-    }
+    BIO_ENUM_BIT_OPERATORS(BufferAttribute, u8)
 
     enum class CommandType : u32 {
         Invalid,

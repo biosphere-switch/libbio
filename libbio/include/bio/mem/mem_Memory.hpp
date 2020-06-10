@@ -96,4 +96,22 @@ namespace bio::mem {
 		}
 	}
 
+	template<typename T, u64 Alignment = NoAlignment>
+	class ScopedHeapBuffer {
+
+		private:
+			T *buf;
+			Result rc;
+
+		public:
+			ScopedHeapBuffer(u64 size) {
+				this->rc = Allocate<Alignment, T>(size, this->buf);
+			}
+
+			operator Result() {
+				
+			}
+
+	};
+
 }

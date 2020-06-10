@@ -102,7 +102,11 @@ namespace bio::ipc::client {
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
                 case CommandState::BeforeHeaderInitialization: {
-                    ctx.AddBuffer(this->buf, this->buf_size, this->attr);
+                    if(this->buf != nullptr) {
+                        if(this->buf_size > 0) {
+                            ctx.AddBuffer(this->buf, this->buf_size, this->attr);
+                        }
+                    }
                     break;
                 }
                 default:

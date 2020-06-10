@@ -44,15 +44,13 @@ namespace bio::diag {
 }
 
 #define BIO_DIAG_DETAILED_LOGF(log_severity, log_verbosity, fmt, ...) ({ \
-    char msg[0x400]; \
-    ::bio::mem::ZeroArray(msg); \
+    char msg[0x400] = {}; \
     const u32 msg_len = static_cast<u32>(::bio::util::SNPrintf(msg, sizeof(msg), fmt, ##__VA_ARGS__)); \
     BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
 })
 
 #define BIO_DIAG_DETAILED_VLOG(log_severity, log_verbosity, fmt, args) ({ \
-    char msg[0x400]; \
-    ::bio::mem::ZeroArray(msg); \
+    char msg[0x400] = {}; \
     const u32 msg_len = static_cast<u32>(::bio::util::VSNPrintf(msg, sizeof(msg), fmt, args)); \
     BIO_DIAG_DETAILED_LOG(log_severity, log_verbosity, msg, msg_len); \
 })

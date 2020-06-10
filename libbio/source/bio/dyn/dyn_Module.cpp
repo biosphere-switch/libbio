@@ -163,8 +163,9 @@ namespace bio::dyn {
     Result Module::ResolveLoadSymbol(const char *find_name, elf::Sym *&def, Module *&defining_module_ptr) {
         auto hash = elf::HashString(find_name);
 
-        for(u32 i = 0; i < g_Modules.GetSize(); i++) {
-            auto &mod = g_Modules.GetAt(i);
+        mem::SharedObject<Module> mod;
+        auto it = g_Modules.Iterate();
+        while(it.GetNext(mod)) {
             BIO_RES_TRY_EXCEPT(mod->TryResolveSymbol(find_name, hash, def, defining_module_ptr, true), result::ResultCouldNotResolveSymbol);
         }
 
@@ -253,7 +254,7 @@ namespace bio::dyn {
 
         auto raw_table8 = reinterpret_cast<u8*>(raw_table);
         for(u64 offset = 0; offset < table_size; offset += ent_size) {
-            auto rela = mem::Zeroed<elf::Rela>();
+            elf::Rela rela = {};
             switch(table_type) {
                 case elf::Tag::RelaOffset: {
                     auto rela_buf = reinterpret_cast<elf::Rela*>(raw_table8 + offset);

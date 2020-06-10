@@ -159,7 +159,21 @@ namespace bio::mem {
         if(IsAddressAllocated(reinterpret_cast<u64>(address), info)) {
             return *info;
         }
-        return mem::Zeroed<AllocationInfo>();
+        return {};
+    }
+
+    extern "C" {
+
+        void *memset(void *address, i32 value, i32 count) {
+            mem::Fill(address, static_cast<u8>(value), static_cast<u64>(count));
+            return address;
+        }
+
+        void *memcpy(void *dest_address, const void *src_address, u64 size) {
+            mem::Copy(dest_address, src_address, size);
+            return dest_address;
+        }
+
     }
 
 }

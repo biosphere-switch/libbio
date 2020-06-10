@@ -25,10 +25,16 @@ namespace bio::crt0 {
 
         void ProcessAtExitEntries() {
             os::ScopedMutexLock lk(g_AtExitLock);
-            for(u32 i = 0; i < g_AtExitEntries.GetSize(); i++) {
-                auto &entry = g_AtExitEntries.GetAt(i);
+            
+            AtExitEntry entry;
+            // Reverse iterate entries (last ones get called first).
+            // While at-exit entries which are registered on program startup might be global services, those registered later might be other stuff making use of those global sessions.
+            // This actually makes automatic GPU disposing work properly.
+            auto it = g_AtExitEntries.IterateReverse();
+            while(it.GetNext(entry)) {
                 entry.Run();
             }
+
             g_AtExitEntries.Clear();
         }
 
@@ -39,6 +45,7 @@ namespace bio::crt0 {
 
     void RegisterAtExit(AtExitFunction fn, void *arg) {
         os::ScopedMutexLock lk(g_AtExitLock);
+        
         g_AtExitEntries.PushBack({ fn, arg });
     }
 

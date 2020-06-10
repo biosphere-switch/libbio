@@ -2,7 +2,7 @@
 
 libbio is Biosphere's userland homebrew library (64-bit only, at least for now).
 
-The library has literally zero dependencies - not even standard C/C++ libraries or headers. Therefore, it provides its own implementations of common C/C++ features (`mem:::SharedObject`, `util::SPrintf`). Some functions which are often internally used by the compiler, like `memcpy` or `memset`, aren't implemented, and using code which makes the compiler make use of them should be avoided (`SomeStruct var = {};` would imply a `memset` call, for instance!).
+The library has literally zero dependencies - not even standard C/C++ libraries or headers. Therefore, it provides its own implementations of common C/C++ features (`mem:::SharedObject`, `util::SPrintf`).
 
 The library makes use of C++20 (gnu++20 in clang), recently released, since it makes use of concepts due to the lack of certain useful but quite annoying template stuff in C++ (std::is_base_of).
 
@@ -14,6 +14,8 @@ The library is a work-in-progress project. Check what's been acomplished and wha
 
 Result module: 420
 
+Submodules:
+
 - Common: submodule 0 (2420-00**)
 
 - Memory: submodule 1 (2420-01**)
@@ -22,13 +24,17 @@ Result module: 420
 
 - Client IPC: submodule 3 (2420-03**)
 
-- Diag: submodule 4 (2420-04**)
+- Server IPC: submodule 4 (2420-04**)
 
-- Server IPC: submodule 5 (2420-05**)
+- Diag: submodule 5 (2420-05**)
 
 - Filesystem: submodule 6 (2420-06**)
 
 - Util: submodule 7 (2420-07**)
+
+- NV driver error codes: submodule 8 (2420-08**)
+
+- GPU (and binder error codes): submodule 9 (2420-09**)
 
 ## TODO
 
@@ -45,6 +51,8 @@ Result module: 420
 - Implement sync-related types: condition variable
 
 - Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
+
+- Extend GPU implementation: implement more vi/nv commands, etc.
 
 ## Done
 
@@ -77,6 +85,8 @@ Result module: 420
 - Proper service guarding to ensure services are properly accessed and disposed
 
 - System version getting support, supporting both hbl HosVersion and set:sys service.
+
+- Implement graphics/GPU, along with nv, vi and nvnflinger/dispdrv services and NVIDIA driver stuff (binder, parcels, types...)
 
 ## Future plans (maybe)
 

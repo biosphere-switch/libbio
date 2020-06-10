@@ -6,7 +6,7 @@
 
 namespace bio::diag {
 
-    enum class AssertMode {
+    enum class AssertMode : u8 {
         Default = BIO_BITMASK(0),
         SvcOutput = BIO_BITMASK(1),
         DiagLog = BIO_BITMASK(2),
@@ -15,13 +15,7 @@ namespace bio::diag {
         SvcBreak = BIO_BITMASK(5),
     };
 
-    inline constexpr AssertMode operator|(AssertMode lhs, AssertMode rhs) {
-        return static_cast<AssertMode>(static_cast<u8>(lhs) | static_cast<u8>(rhs));
-    }
-
-    inline constexpr AssertMode operator&(AssertMode lhs, AssertMode rhs) {
-        return static_cast<AssertMode>(static_cast<u8>(lhs) & static_cast<u8>(rhs));
-    }
+    BIO_ENUM_BIT_OPERATORS(AssertMode, u8)
 
     struct AssertMetadata {
         SourceInfo source_info;
@@ -54,8 +48,7 @@ namespace bio::diag {
 })
 
 #define BIO_DIAG_DETAILED_RES_ASSERT(mode, rc) ({ \
-    char msg[0x40]; \
-    ::bio::mem::ZeroArray(msg); \
+    char msg[0x40] = {}; \
     const auto _rc = static_cast<::bio::Result>(rc); \
     if(_rc.IsFailure()) { \
         const auto len = static_cast<u32>(::bio::util::SPrintf(msg, "%s -> 0x%X (%04d-%04d)", #rc, _rc.GetValue(), _rc.GetModule() + 2000, _rc.GetDescription())); \

@@ -24,7 +24,7 @@ DEF_SVC _ZN3bio3svc19SetMemoryPermissionEPvyj
 	ret
 END_DEF_SVC
 
-DEF_SVC svcSetMemoryAttribute
+DEF_SVC _ZN3bio3svc18SetMemoryAttributeEPvyjNS0_15MemoryAttributeE
 	svc 0x3
 	ret
 END_DEF_SVC
@@ -127,7 +127,7 @@ DEF_SVC svcUnmapSharedMemory
 	ret
 END_DEF_SVC
 
-DEF_SVC svcCreateTransferMemory
+DEF_SVC _ZN3bio3svc20CreateTransferMemoryERjPvyNS0_16MemoryPermissionE
 	str x0, [sp, #-16]!
 	svc 0x15
 	ldr x2, [sp], #16

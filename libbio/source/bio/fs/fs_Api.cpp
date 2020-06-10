@@ -8,7 +8,7 @@ namespace bio::fs {
         void UnpackPath(util::LinkedList<PathName> &out_unpacked_path, const char *path) {
             out_unpacked_path.Clear();
 
-            auto cur_name = mem::Zeroed<PathName>();
+            PathName cur_name = {};
             cur_name.type = PathNameType::Invalid;
             u32 offset = 0;
             u32 name_offset = 0;
@@ -25,7 +25,7 @@ namespace bio::fs {
                 else { \
                     out_unpacked_path.PushBack(cur_name); \
                 } \
-                cur_name = mem::Zeroed<PathName>(); \
+                cur_name = {}; \
                 cur_name.type = PathNameType::Invalid; \
                 name_offset = 0;
             
@@ -101,10 +101,11 @@ namespace bio::fs {
 
         bool FindDeviceByName(PathName name, Device &out_dev) {
             os::ScopedMutexLock lk(g_DevicesLock);
-            for(u32 i = 0; i < g_Devices.GetSize(); i++) {
-                auto &device = g_Devices.GetAt(i);
-                if(device.root_name.Equals(name)) {
-                    out_dev = device;
+            Device dev;
+            auto it = g_Devices.Iterate();
+            while(it.GetNext(dev)) {
+                if(dev.root_name.Equals(name)) {
+                    out_dev = dev;
                     return true;
                 }
             }
@@ -136,12 +137,15 @@ namespace bio::fs {
 
     void UnmountDevice(const char *name) {
         os::ScopedMutexLock lk(g_DevicesLock);
-        for(u32 i = 0; i < g_Devices.GetSize(); i++) {
-            auto &device = g_Devices.GetAt(i);
-            if(util::Strcmp(name, device.root_name.name) == 0) {
+        u32 i = 0;
+        Device dev;
+        auto it = g_Devices.Iterate();
+        while(it.GetNext(dev)) {
+            if(util::Strcmp(name, dev.root_name.name) == 0) {
                 g_Devices.PopAt(i);
                 break;
             }
+            i++;
         }
     }
 
@@ -156,8 +160,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->CreateFile(fsp_path, service::fsp::MaxPathLength, option, size));
 
@@ -175,8 +178,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
 
         mem::SharedObject<service::fsp::File> fsp_file;
@@ -215,8 +217,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->DeleteFile(fsp_path, sizeof(fsp_path)));
 
@@ -234,8 +235,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->CreateDirectory(fsp_path, sizeof(fsp_path)));
 
@@ -253,8 +253,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
 
         mem::SharedObject<service::fsp::Directory> fsp_dir;
@@ -278,8 +277,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->DeleteDirectory(fsp_path, sizeof(fsp_path)));
 
@@ -297,8 +295,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->DeleteDirectoryRecursively(fsp_path, sizeof(fsp_path)));
 
@@ -316,8 +313,7 @@ namespace bio::fs {
         Device dev;
         BIO_RET_UNLESS(FindDeviceByName(root, dev), result::ResultDeviceNotFound);
 
-        char fsp_path[service::fsp::MaxPathLength];
-        mem::ZeroArray(fsp_path);
+        char fsp_path[service::fsp::MaxPathLength] = {};
         PackPath(unpacked_path, fsp_path, false);
         BIO_RES_TRY(dev.fs->GetEntryType(fsp_path, sizeof(fsp_path), out_type));
 

@@ -10,13 +10,7 @@ namespace bio::service::fsp {
         Append = BIO_BITMASK(2),
     };
 
-    inline constexpr FileOpenMode operator|(FileOpenMode lhs, FileOpenMode rhs) {
-        return static_cast<FileOpenMode>(static_cast<u32>(lhs) | static_cast<u32>(rhs));
-    }
-
-    inline constexpr FileOpenMode operator&(FileOpenMode lhs, FileOpenMode rhs) {
-        return static_cast<FileOpenMode>(static_cast<u32>(lhs) & static_cast<u32>(rhs));
-    }
+    BIO_ENUM_BIT_OPERATORS(FileOpenMode, u32)
 
     constexpr u32 MaxPathLength = 0x301;
 
@@ -55,12 +49,6 @@ namespace bio::service::fsp {
         NoFileSizes = BIO_BITMASK(31),
     };
 
-    inline constexpr DirectoryOpenMode operator|(DirectoryOpenMode lhs, DirectoryOpenMode rhs) {
-        return static_cast<DirectoryOpenMode>(static_cast<i64>(lhs) | static_cast<i64>(rhs));
-    }
-
-    inline constexpr DirectoryOpenMode operator&(DirectoryOpenMode lhs, DirectoryOpenMode rhs) {
-        return static_cast<DirectoryOpenMode>(static_cast<i64>(lhs) & static_cast<i64>(rhs));
-    }
+    BIO_ENUM_BIT_OPERATORS(DirectoryOpenMode, i64)
 
 }

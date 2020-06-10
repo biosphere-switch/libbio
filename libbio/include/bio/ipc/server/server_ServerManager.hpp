@@ -154,7 +154,7 @@ namespace bio::ipc::server {
 
                 if(this->handles.IsFull()) {
                     svc::CloseHandle(new_handle);
-                    return 0xbabe;
+                    return result::ResultHandleTableFull;
                 }
 
                 this->handles.Push({ new_handle, WaitHandleType::Session });
@@ -305,19 +305,20 @@ namespace bio::ipc::server {
                 auto out_idx = ServerObject::InvalidIndex;
                 BIO_RES_TRY(svc::WaitSynchronization(out_idx, this->wait_handles.Get(), this->wait_handles.GetSize(), svc::IndefiniteWait));
 
-                BIO_RET_UNLESS(out_idx >= 0 && out_idx < this->wait_handles.GetSize(), 0xbeef);
+                if((out_idx >= 0) && (out_idx < this->wait_handles.GetSize())) {
+                    auto &signaled_handle = this->wait_handles.GetAt(out_idx);
 
-                auto &signaled_handle = this->wait_handles.GetAt(out_idx);
-
-                for(u32 i = 0; i < this->servers.GetSize(); i++) {
-                    auto &server = this->servers.GetAt(i);
-                    auto idx = server->GetHandleIndex(signaled_handle);
-                    if(idx != ServerObject::InvalidIndex) {
-                        // The handle belongs to the server object.
-                        server->ProcessSignaledHandle(idx);
-                        break;
+                    ServerObject *server;
+                    auto it = this->servers.Iterate();
+                    while(it.GetNext(server)) {
+                        auto idx = server->GetHandleIndex(signaled_handle);
+                        if(idx != ServerObject::InvalidIndex) {
+                            // The handle belongs to the server object.
+                            server->ProcessSignaledHandle(idx);
+                            break;
+                        }
                     }
-                }
+                };
 
                 return ResultSuccess;
             }

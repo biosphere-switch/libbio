@@ -10,13 +10,12 @@ namespace bio::util {
     class LinkedList {
         
         private:
-            template<typename S>
             struct Node {
-                S value;
-                Node<S> *prev;
-                Node<S> *next;
+                T value;
+                Node *prev;
+                Node *next;
 
-                constexpr Node(S &val) : value(val), prev(nullptr), next(nullptr) {}
+                constexpr Node(T &val) : value(val), prev(nullptr), next(nullptr) {}
 
                 inline constexpr bool IsHead() {
                     return this->prev == nullptr;
@@ -26,7 +25,7 @@ namespace bio::util {
                     return this->next == nullptr;
                 }
 
-                inline constexpr void Push(Node<S> *node) {
+                inline constexpr void Push(Node *node) {
                     if(!this->IsTail()) {
                         this->next->prev = node;
                     }
@@ -35,7 +34,7 @@ namespace bio::util {
                     node->prev = this;
                 }
 
-                inline constexpr Node<S> *Pop() {
+                inline constexpr Node *Pop() {
                     auto ret = this->next;
                     if(!this->IsTail()) {
                         this->next->prev = nullptr;
@@ -44,7 +43,7 @@ namespace bio::util {
                     return ret;
                 }
 
-                inline constexpr Node<S> *PopSelf() {
+                inline constexpr Node *PopSelf() {
                     if(!this->IsHead()) {
                         this->prev->next = this->next;
                     }
@@ -58,11 +57,10 @@ namespace bio::util {
 
             };
 
-            using ListNode = Node<T>;
+        private:
+            Node *head;
 
-            ListNode *head;
-
-            ListNode *GetTailNode() {
+            Node *GetTailNode() {
                 auto cur_node = this->head;
                 while(cur_node != nullptr) {
                     if(cur_node->IsTail()) {
@@ -73,7 +71,7 @@ namespace bio::util {
                 return nullptr;
             }
 
-            ListNode *GetNodeAtIndex(u32 index) {
+            Node *GetNodeAtIndex(u32 index) {
                 u32 i = 0;
                 auto cur_node = this->head;
                 while(cur_node != nullptr) {
@@ -87,6 +85,46 @@ namespace bio::util {
             }
 
         public:
+            enum class IterateDirection {
+                Forward,
+                Backwards,
+            };
+            
+            class Iterator {
+
+                private:
+                    IterateDirection direction;
+                    Node *root;
+                    Node *cur;
+
+                public:
+                    Iterator(Node *root, IterateDirection direction) : direction(direction), root(root), cur(root) {}
+
+                    void Reset() {
+                        this->cur = this->root;
+                    }
+
+                    bool GetNext(T &out_val) {
+                        if(this->cur != nullptr) {
+                            out_val = this->cur->value;
+                            switch(this->direction) {
+                                case IterateDirection::Forward: {
+                                    this->cur = this->cur->next;
+                                    break;
+                                }
+                                case IterateDirection::Backwards: {
+                                    this->cur = this->cur->prev;
+                                    break;
+                                };
+                            }
+                            return true;
+                        }
+                        return false;
+                    }
+
+            };
+
+        public:
             constexpr LinkedList() : head(nullptr) {}
 
             inline Result PushBack(T &value) {
@@ -94,7 +132,7 @@ namespace bio::util {
                     BIO_RES_TRY(mem::New(this->head, value));
                 }
                 else {
-                    ListNode *node;
+                    Node *node;
                     BIO_RES_TRY(mem::New(node, value));
 
                     auto tail = this->GetTailNode();
@@ -108,7 +146,7 @@ namespace bio::util {
                     BIO_RES_TRY(mem::New(this->head,value));
                 }
                 else {
-                    ListNode *node;
+                    Node *node;
                     BIO_RES_TRY(mem::New(node, value));
 
                     auto tail = this->GetTailNode();
@@ -122,7 +160,7 @@ namespace bio::util {
                 BIO_RET_UNLESS(at_idx != nullptr, result::ResultInvalidIndex);
 
                 if(at_idx->IsHead()) {
-                    ListNode *node;
+                    Node *node;
                     BIO_RES_TRY(mem::New(node, value));
 
                     node->next = at_idx;
@@ -130,7 +168,7 @@ namespace bio::util {
                     this->head = node;
                 }
                 else {
-                    ListNode *node;
+                    Node *node;
                     BIO_RES_TRY(mem::New(node, value));
 
                     auto prev = at_idx->prev;
@@ -158,6 +196,11 @@ namespace bio::util {
             inline constexpr T &GetAt(u32 index) {
                 auto at_idx = this->GetNodeAtIndex(index);
                 return at_idx->value;
+            }
+
+            inline constexpr void SetAt(u32 index, T &&value) {
+                auto at_idx = this->GetNodeAtIndex(index);
+                at_idx->value = value;
             }
 
             inline void Clear() {
@@ -196,6 +239,14 @@ namespace bio::util {
                     sz++;
                 }
                 return sz;
+            }
+
+            inline Iterator Iterate() {
+                return Iterator(this->head, IterateDirection::Forward);
+            }
+
+            inline Iterator IterateReverse() {
+                return Iterator(this->GetTailNode(), IterateDirection::Backwards);
             }
 
     };

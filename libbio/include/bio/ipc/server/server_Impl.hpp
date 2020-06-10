@@ -1,6 +1,7 @@
     
 #pragma once
 #include <bio/ipc/ipc_Types.hpp>
+#include <bio/ipc/server/server_Results.hpp>
 #include <bio/util/util_Array.hpp>
 #include <bio/util/util_Templates.hpp>
 
@@ -117,7 +118,7 @@ namespace bio::ipc::server {
         }
         */
 
-        BIO_RET_UNLESS(header->magic == DataInHeaderMagic, 0xbeef);
+        BIO_RET_UNLESS(header->magic == DataInHeaderMagic, result::ResultInvalidRequestCommand);
         out_request_id = header->value;
 
         ctx.in.data_offset = data_offset;

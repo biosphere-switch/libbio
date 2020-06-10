@@ -41,12 +41,6 @@ namespace bio::crt0 {
 
     namespace {
 
-        i32 FakeSPrintf(char* buffer, const char* format, ...) {
-            BIO_DIAG_LOGF("Fake sprintf!");
-            while(true) {}
-            return -1;
-        }
-
         // Default heap size (128MB)
         constexpr u64 DefaultHeapSize = 0x8000000;
 
@@ -117,6 +111,12 @@ namespace bio::crt0 {
         const auto has_exception = (x0_v != nullptr) && (x1_v != -1);
         const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
 
+        // If we are told to handle an exception, handle it.
+        if(has_exception) {
+            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
+            ExceptionHandler(desc);
+        }
+
         auto main_thread_handle = static_cast<u32>(x1_v);
 
         // Set exit function if we're given a valid one (svc::ExitProcess is used by default)
@@ -148,7 +148,8 @@ namespace bio::crt0 {
                     case hbl::ABIConfigKey::HosVersion: {
                         hbl_hos_version = static_cast<u32>(arg->value[0]);
                         break;
-                    };
+                    }
+                    // TODO: support more entries
                     default:
                         break;
                 }
@@ -158,12 +159,6 @@ namespace bio::crt0 {
 
         // Setup TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
-
-        // If we are told to handle an exception, handle it.
-        if(has_exception) {
-            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
-            ExceptionHandler(desc);
-        }
 
         // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts, like sysmodules/processes using fake stack heaps)
         void *actual_heap_address;

@@ -23,7 +23,7 @@ namespace bio::diag {
         struct LogDataChunkBase {
             LogDataChunkHeader header;
 
-            LogDataChunkBase() : header(mem::Zeroed<LogDataChunkHeader>()) {}
+            constexpr LogDataChunkBase() : header() {}
 
             inline constexpr bool IsEmpty() {
                 return this->header.length == 0;
@@ -46,7 +46,7 @@ namespace bio::diag {
         struct LogDataChunk : public LogDataChunkBase {
             T value;
 
-            LogDataChunk() : LogDataChunkBase(), value(mem::Zeroed<T>()) {}
+            constexpr LogDataChunk() : LogDataChunkBase(), value() {}
 
             void Initialize(LogDataChunkKey key, T val) {
                 this->header.key = static_cast<u8>(key);
@@ -59,9 +59,7 @@ namespace bio::diag {
         struct LogStringDataChunk : public LogDataChunkBase {
             char value[MaxStringLength + 1];
 
-            LogStringDataChunk() : LogDataChunkBase() {
-                mem::ZeroArray(this->value);
-            }
+            constexpr LogStringDataChunk() : LogDataChunkBase(), value() {}
 
             void Initialize(LogDataChunkKey key, const char *val, const u32 val_len) {
                 this->header.key = static_cast<u8>(key);
