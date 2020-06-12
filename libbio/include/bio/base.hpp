@@ -127,8 +127,8 @@ namespace bio {
 
 #define BIO_RES_TRY_EXCEPT(expr, except) ({ \
     auto _tmp_rc = _BIO_AS_RESULT(expr); \
-    auto _tmp_expect = _BIO_AS_RESULT(expr); \
-    if(_tmp_rc.GetValue() != _tmp_expect.GetValue()) { \
+    auto _tmp_except = _BIO_AS_RESULT(except); \
+    if(_tmp_rc.GetValue() != _tmp_except.GetValue()) { \
         if(_tmp_rc.IsFailure()) { \
             return _tmp_rc; \
         } \

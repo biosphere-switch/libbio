@@ -60,7 +60,7 @@ Submodules:
 
   - Condition variables
 
-- Implement several kernel types: thread (almost done), event, shared memory, transfer memory, waitable
+- Implement several kernel types:
 
   - Threads (almost finished)
 
@@ -70,7 +70,7 @@ Submodules:
 
   - Transfer memory (SVC implemented)
 
-  - Waitable system (currently doing raw SVC WaitSync calls)
+  - Waitable system (almost finished)
 
 - Extend GPU implementation:
 
@@ -125,3 +125,7 @@ Submodules:
 - Added memory data cache utilities (grabbed from libnx)
 
 - Implemented a dynamic list type - doubly linked lists, supporting iteration and quite easy to use.
+
+- Implemented a basic waitable system (half of it) to simplify handle waiting.
+
+- Added arm system tick utilities.

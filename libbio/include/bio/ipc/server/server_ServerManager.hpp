@@ -2,6 +2,7 @@
 #pragma once
 #include <bio/ipc/server/server_MitmQuery.hpp>
 #include <bio/ipc/server/server_Results.hpp>
+#include <bio/os/os_Wait.hpp>
 #include <bio/util/util_List.hpp>
 
 namespace bio::ipc::server {
@@ -83,13 +84,12 @@ namespace bio::ipc::server {
                 return this->handles;
             }
 
-            Result ProcessSessionHandle(i32 index) {
+            Result ProcessSessionHandle(i32 index, WaitHandle &handle) {
                 // AKA process a request from a session.
-                auto &handle = this->handles.GetAt(index);
                 auto &fwd_handle = this->fwd_handles.GetAt(index);
 
                 i32 tmp_idx;
-                BIO_RES_TRY(svc::ReplyAndReceive(tmp_idx, &handle.handle, 1, 0, svc::IndefiniteWait));
+                BIO_RES_TRY(svc::ReplyAndReceive(tmp_idx, &handle.handle, 1, InvalidHandle, svc::IndefiniteWait));
 
                 u8 ipc_buf_backup[0x100];
                 if(this->is_mitm) {
@@ -106,6 +106,7 @@ namespace bio::ipc::server {
 
                 switch(type) {
                     case ipc::CommandType::Request: {
+                        auto do_response = true;
                         u32 rq_id;
                         auto rc = ReadRequestCommandFromIpcBuffer(ctx, rq_id);
                         if(rc.IsSuccess()) {
@@ -116,10 +117,11 @@ namespace bio::ipc::server {
                                     auto ipc_buf = GetIpcBuffer();
                                     mem::Copy(ipc_buf, ipc_buf_backup, sizeof(ipc_buf_backup));
                                     BIO_RES_TRY(svc::SendSyncRequest(fwd_handle));
+                                    do_response = false;
                                 }
                             }
                         }
-                        else {
+                        if(do_response) {
                             WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
                         }
                         break;
@@ -145,9 +147,8 @@ namespace bio::ipc::server {
                 return ResultSuccess;
             }
 
-            Result ProcessServerHandle(i32 index) {
+            Result ProcessServerHandle(i32 index, WaitHandle &handle) {
                 // AKA add/accept connection with a new session.
-                auto &handle = this->handles.GetAt(index);
 
                 u32 new_handle = 0;
                 BIO_RES_TRY(svc::AcceptSession(new_handle, handle.handle));
@@ -187,11 +188,11 @@ namespace bio::ipc::server {
                 auto &handle = this->handles.GetAt(index);
                 switch(handle.type) {
                     case WaitHandleType::Server: {
-                        BIO_RES_TRY(this->ProcessServerHandle(index));
+                        BIO_RES_TRY(this->ProcessServerHandle(index, handle));
                         break;
                     }
                     case WaitHandleType::Session: {
-                        BIO_RES_TRY(this->ProcessSessionHandle(index));
+                        BIO_RES_TRY(this->ProcessSessionHandle(index, handle));
                         break;
                     }
                 }
@@ -215,7 +216,7 @@ namespace bio::ipc::server {
 
         private:
             util::LinkedList<ServerObject*> servers;
-            util::SizedArray<u32, 0x40> wait_handles;
+            util::SizedArray<u32, os::MaxWaitObjectCount> wait_handles;
 
             static Result RegisterMitmQuerySession(u32 mitm_query_handle, ShouldMitmFunction fn);
 
@@ -282,7 +283,8 @@ namespace bio::ipc::server {
                 BIO_RES_TRY(sm);
                 BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
 
-                BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
+                // TODO: currently the ShouldMitm interface causes a deadlock - figure out why and get mitm working
+                // BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
                 BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
 
                 return ResultSuccess;
@@ -303,7 +305,7 @@ namespace bio::ipc::server {
                 this->PrepareWaitHandles();
 
                 auto out_idx = ServerObject::InvalidIndex;
-                BIO_RES_TRY(svc::WaitSynchronization(out_idx, this->wait_handles.Get(), this->wait_handles.GetSize(), svc::IndefiniteWait));
+                BIO_RES_TRY(os::WaitHandlesAny(this->wait_handles, svc::IndefiniteWait, out_idx));
 
                 if((out_idx >= 0) && (out_idx < this->wait_handles.GetSize())) {
                     auto &signaled_handle = this->wait_handles.GetAt(out_idx);
@@ -314,7 +316,8 @@ namespace bio::ipc::server {
                         auto idx = server->GetHandleIndex(signaled_handle);
                         if(idx != ServerObject::InvalidIndex) {
                             // The handle belongs to the server object.
-                            server->ProcessSignaledHandle(idx);
+                            auto rc = server->ProcessSignaledHandle(idx);
+                            // TODO: handle result
                             break;
                         }
                     }

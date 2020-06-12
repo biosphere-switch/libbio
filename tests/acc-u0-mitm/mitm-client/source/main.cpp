@@ -9,9 +9,14 @@ BIO_CRT0_DEFINE_MODULE_NAME("acc-u0-mitm-client-test");
 
 namespace bio::diag {
 
-    auto g_DefaultAssertMode = AssertMode::ProcessExit;
+    auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::ProcessExit;
 
 }
+
+struct UserId {
+    u64 high;
+    u64 low;
+};
 
 class AccService : public ipc::client::Service {
 
@@ -29,6 +34,10 @@ class AccService : public ipc::client::Service {
             return this->session.SendRequestCommand<0>(ipc::client::Out<u32>(out_count));
         }
 
+        inline Result GetLastOpenedUser(UserId &out_user) {
+            return this->session.SendRequestCommand<4>(ipc::client::Out<UserId>(out_user));
+        }
+
 };
 
 void Main() {
@@ -41,6 +50,10 @@ void Main() {
     BIO_DIAG_RES_ASSERT(acc->GetUserCount(count));
 
     BIO_DIAG_LOGF("Got user count: %d", count);
+
+    UserId user;
+    BIO_DIAG_RES_ASSERT(acc->GetLastOpenedUser(user));
+    BIO_DIAG_LOGF("Last opened user { high: 0x%lX, low: 0x%lX }", user.high, user.low);
 
     BIO_DIAG_LOG("Done");
 }
