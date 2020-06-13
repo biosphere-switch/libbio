@@ -284,7 +284,7 @@ namespace bio::ipc::server {
                 BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
 
                 // TODO: currently the ShouldMitm interface causes a deadlock - figure out why and get mitm working
-                // BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
+                BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
                 BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
 
                 return ResultSuccess;

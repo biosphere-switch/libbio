@@ -20,6 +20,7 @@ namespace bio::ipc::server {
 
                 service::sm::MitmProcessInfo info;
                 this->RequestCommandBegin(ctx, ipc::server::In<service::sm::MitmProcessInfo>(info));
+                BIO_DIAG_LOGF("ShouldMitm -> program ID: 0x%lX", info.program_id);
 
                 auto should_mitm = this->should_mitm_fn(info);
                 return this->RequestCommandEnd(ctx, ResultSuccess, ipc::server::Out<bool>(should_mitm));

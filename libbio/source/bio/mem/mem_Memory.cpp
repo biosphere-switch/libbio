@@ -1,12 +1,13 @@
 #include <bio/mem/mem_Memory.hpp>
 #include <bio/os/os_Mutex.hpp>
+#include <bio/mem/mem_Utils.hpp>
 
 namespace bio::mem {
 
-    // By default, take 4 pages of space.
+    // By default, take 4 pages of space, or 1024 allocation entries.
 
     __attribute__((weak))
-    u64 g_AllocationTableSize = 0x4000;
+    u64 g_AllocationTableSize = 0x400 * sizeof(AllocationInfo);
 
     namespace {
 
@@ -77,10 +78,15 @@ namespace bio::mem {
     }
 
     void Initialize(void *address, u64 size) {
-        os::ScopedMutexLock lk(g_AllocationLock);
-        g_BaseAddress = reinterpret_cast<u64>(address);
-        g_TotalSize = size;
-        ZeroCount(GetAllocationTableAddress(), GetAllocationTableCount());
+        if(g_BaseAddress == 0) {
+            os::ScopedMutexLock lk(g_AllocationLock);
+            g_BaseAddress = reinterpret_cast<u64>(address);
+            g_TotalSize = size;
+
+            // If the allocation table size is not aligned, align it.
+            g_AllocationTableSize = mem::AlignUp(g_AllocationTableSize, PageAlignment);
+            ZeroCount(GetAllocationTableAddress(), GetAllocationTableCount());
+        }
     }
 
     Result AllocateAligned(u64 alignment, u64 size, void *&out_address) {

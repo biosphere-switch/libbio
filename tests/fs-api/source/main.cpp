@@ -40,6 +40,7 @@ void Main() {
     fs::GetEntryType("sd:/newdir", type);
 
     BIO_DIAG_LOGF("Type: %s", (type == service::fsp::DirectoryEntryType::Directory) ? "Directory" : "File");
+    FS_LOG("This will be %s to a log file!\nMultiline log", "saved");
 
     BIO_DIAG_LOG("Done");
 }

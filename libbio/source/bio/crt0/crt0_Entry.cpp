@@ -19,30 +19,15 @@ namespace bio::crt0 {
 
     // Can be used to handle exceptions
     __attribute__((weak))
-    __attribute__((noreturn))
     void ExceptionHandler(ExceptionDescription desc) {
         svc::ReturnFromException(os::result::ResultUnhandledException);
-        __builtin_unreachable();
         while(true) {}
     }
 
-    __attribute__((weak))
-    Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
-        // By default, use svc::SetHeapSize unless hbl gave us a heap address and size. 
-        if(heap_address == nullptr) {
-            BIO_RES_TRY(svc::SetHeapSize(out_heap_address, heap_size));
-        }
-        else {
-            out_heap_address = heap_address;
-        }
-        out_size = heap_size;
-        return ResultSuccess;
-    }
+    // Must be implemented by the application
+    Result InitializeHeap(void *hbl_heap_address, u64 hbl_heap_size, void *&out_heap_address, u64 &out_size);
 
     namespace {
-
-        // Default heap size (128MB)
-        constexpr u64 DefaultHeapSize = 0x8000000;
 
         os::Thread g_MainThread;
 
@@ -102,20 +87,21 @@ namespace bio::crt0 {
 
     __attribute__((weak))
     void Entry(void *x0_v, u64 x1_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
-        // Clear .bss section
-        ClearBss(bss_start, bss_end);
-
-        // Relocate ourselves
-        dyn::RelocateModule(aslr_base_address);
-        
         const auto has_exception = (x0_v != nullptr) && (x1_v != -1);
-        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
 
         // If we are told to handle an exception, handle it.
         if(has_exception) {
             auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
             ExceptionHandler(desc);
         }
+
+        // Clear .bss section
+        ClearBss(bss_start, bss_end);
+
+        // Relocate ourselves
+        dyn::RelocateModule(aslr_base_address);
+        
+        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
 
         auto main_thread_handle = static_cast<u32>(x1_v);
 
@@ -124,8 +110,8 @@ namespace bio::crt0 {
             SetExitFunction(lr);
         }
 
-        void *base_heap_address = nullptr;
-        auto base_heap_size = DefaultHeapSize;
+        void *hbl_heap_address = nullptr;
+        auto hbl_heap_size = 0;
         u32 hbl_hos_version = 0;
 
         if(is_hbl_nro) {
@@ -137,8 +123,8 @@ namespace bio::crt0 {
                 }
                 switch(key) {
                     case hbl::ABIConfigKey::OverrideHeap: {
-                        base_heap_address = reinterpret_cast<void*>(arg->value[0]);
-                        base_heap_size = arg->value[1];
+                        hbl_heap_address = reinterpret_cast<void*>(arg->value[0]);
+                        hbl_heap_size = arg->value[1];
                         break;
                     }
                     case hbl::ABIConfigKey::MainThreadHandle: {
@@ -160,17 +146,17 @@ namespace bio::crt0 {
         // Setup TLS and main thread context
         SetupTlsMainThread(main_thread_handle);
 
-        // Prepare heap via this weak function (we might need to avoid svc::SetHeapSize in some contexts, like sysmodules/processes using fake stack heaps)
-        void *actual_heap_address;
-        u64 actual_heap_size;
-        BIO_DIAG_RES_ASSERT(InitializeHeap(base_heap_address, base_heap_size, actual_heap_address, actual_heap_size));
+        // Prepare heap (we might need to avoid svc::SetHeapSize in some contexts, like sysmodules/processes using fake stack heaps, so force the application to do it itself)
+        void *heap_address = nullptr;
+        u64 heap_size = 0;
+        BIO_DIAG_RES_ASSERT(InitializeHeap(hbl_heap_address, hbl_heap_size, heap_address, heap_size));
 
         // Ensure heap address and size are valid.
-        BIO_DIAG_ASSERT(actual_heap_address != nullptr);
-        BIO_DIAG_ASSERT(actual_heap_size > 0);
+        BIO_DIAG_ASSERT(heap_address != nullptr);
+        BIO_DIAG_ASSERT(heap_size > 0);
 
         // Initialize memory allocator.
-        mem::Initialize(actual_heap_address, actual_heap_size);
+        mem::Initialize(heap_address, heap_size);
 
         // Set system version.
         BIO_DIAG_RES_ASSERT(SetSystemVersion(hbl_hos_version));
@@ -181,8 +167,8 @@ namespace bio::crt0 {
         // Call code entrypoint.
         Main();
 
-        // Here is where N/libnx/libtransistor would dispose global services, modules, etc.
-        // Note: no disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
+        // Here is where Nintendo/libnx/libtransistor would dispose global services, modules, etc.
+        // No disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
 
         // Successful exit by default.
         Exit(ExitSuccess);

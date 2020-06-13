@@ -14,9 +14,10 @@ namespace bio::ipc::server {
             manager->LoopProcess();
         }
 
-        Result LaunchMitmQueryThread() {
+        Result EnsureMitmQueryThreadLaunched() {
             if(!g_MitmQueryThreadLaunched) {
-                BIO_RES_TRY(os::Thread::Create(&MitmQueryThread, &g_MitmQueryManager, nullptr, 0x4000, 27, os::Thread::DefaultCpuId, "MitmQueryThread", g_MitmQueryThread));
+                // TODO: get minimum thread priority allowed in this process (svc::GetInfo and info type 1 / PriorityMask)
+                BIO_RES_TRY(os::Thread::Create(&MitmQueryThread, &g_MitmQueryManager, nullptr, 0x4000, 20, os::Thread::DefaultCpuId, "MitmQueryThread", g_MitmQueryThread));
                 BIO_RES_TRY(g_MitmQueryThread->Start());
                 g_MitmQueryThreadLaunched = true;
             }
@@ -28,7 +29,7 @@ namespace bio::ipc::server {
     Result ServerManager::RegisterMitmQuerySession(u32 mitm_query_handle, ShouldMitmFunction fn) {
         os::ScopedMutexLock lk(g_MitmQueryLock);
         BIO_RES_TRY(g_MitmQueryManager.RegisterSession<MitmQueryServer>(mitm_query_handle, fn));
-        BIO_RES_TRY(LaunchMitmQueryThread());
+        BIO_RES_TRY(EnsureMitmQueryThreadLaunched());
         return ResultSuccess;
     }
 

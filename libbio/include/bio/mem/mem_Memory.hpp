@@ -3,23 +3,12 @@
 #include <bio/mem/mem_Utils.hpp>
 #include <bio/mem/mem_Cache.hpp>
 
-// These are needed to be able to call the constructor via placement new
+// This is needed to be able to call the constructor via placement new
 
 __attribute__((visibility("hidden")))
 inline void* operator new(unsigned long, void *ptr) {
 	return ptr; 
 }
-
-__attribute__((visibility("hidden")))
-inline void* operator new[](unsigned long, void *ptr) {
-	return ptr;
-}
-
-__attribute__((visibility("hidden")))
-inline void operator delete(void*, void*) {}
-
-__attribute__((visibility("hidden")))
-inline void operator delete[](void*, void*) {}
 
 namespace bio::mem {
 

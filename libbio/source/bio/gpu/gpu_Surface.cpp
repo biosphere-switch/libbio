@@ -32,7 +32,7 @@ namespace bio::gpu {
         const auto stride = aligned_width;
         this->single_buffer_size = aligned_width_bytes * aligned_height;
         const auto usage = GraphicsAllocatorUsage::HardwareComposer | GraphicsAllocatorUsage::HardwareRender | GraphicsAllocatorUsage::HardwareTexture;
-        const auto buf_size = mem::AlignUp(this->buffer_count * this->single_buffer_size, mem::PageAlignment);
+        const auto buf_size = this->buffer_count * this->single_buffer_size;
 
         ioctl::nvmap::Create create = {};
         create.size = buf_size;
@@ -43,8 +43,6 @@ namespace bio::gpu {
         BIO_RES_TRY(Ioctl(get_id));
 
         BIO_RES_TRY(mem::Allocate<mem::PageAlignment>(buf_size, this->buffer_data));
-
-        BIO_RES_TRY(svc::SetMemoryAttribute(this->buffer_data, buf_size, 8, svc::MemoryAttribute::Uncached));
 
         ioctl::nvmap::Alloc alloc = {};
         alloc.handle = create.handle;
@@ -88,7 +86,6 @@ namespace bio::gpu {
         for(u32 i = 0; i < this->buffer_count; i++) {
             auto buf_copy = this->graphic_buffer;
             buf_copy.planes[0].offset = i * this->single_buffer_size;
-
             BIO_RES_TRY(this->binder.SetPreallocatedBuffer(i, buf_copy));
 
             this->slot_has_requested.PushBack(false);
@@ -170,8 +167,7 @@ namespace bio::gpu {
         qbi.fence = fences;
 
         // Flush data cache.
-        const auto buf_size = mem::AlignUp(this->buffer_count * this->single_buffer_size, mem::PageAlignment);
-        mem::FlushDataCache(this->buffer_data, buf_size);
+        mem::FlushDataCache(this->buffer_data, this->single_buffer_size * this->buffer_count);
 
         QueueBufferOutput qbo;
         BIO_RES_TRY(this->binder.QueueBuffer(slot, qbi, qbo));

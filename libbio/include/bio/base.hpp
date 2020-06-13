@@ -45,29 +45,29 @@ static_assert(sizeof(f64) == 8);
     #error "Cannot determine the target architecture"
 #endif
 
-namespace bio::result::impl {
-
-    static constexpr u32 ModuleBits = 9;
-    static constexpr u32 DescriptionBits = 13;
-    static constexpr u32 ReservedBits = 10;
-    static constexpr u32 DefaultValue = u32();
-    static constexpr u32 SuccessValue = DefaultValue;
-
-    inline constexpr u32 Pack(u32 mod, u32 desc) {
-        return mod | (desc << ModuleBits);
-    }
-
-    inline constexpr u32 UnpackModule(u32 value) {
-        return value & ~(~DefaultValue << ModuleBits);
-    }
-
-    inline constexpr u32 UnpackDescription(u32 value) {
-        return (value >> ModuleBits) & ~(~DefaultValue << DescriptionBits);
-    }
-
-}
-
 namespace bio {
+
+    namespace result::impl {
+
+        constexpr u32 ModuleBits = 9;
+        constexpr u32 DescriptionBits = 13;
+        constexpr u32 ReservedBits = 10;
+        constexpr u32 DefaultValue = u32();
+        constexpr u32 SuccessValue = DefaultValue;
+
+        inline constexpr u32 Pack(u32 mod, u32 desc) {
+            return mod | (desc << ModuleBits);
+        }
+
+        inline constexpr u32 UnpackModule(u32 value) {
+            return value & ~(~DefaultValue << ModuleBits);
+        }
+
+        inline constexpr u32 UnpackDescription(u32 value) {
+            return (value >> ModuleBits) & ~(~DefaultValue << DescriptionBits);
+        }
+
+    }
 
     struct Result {
         u32 value;
@@ -107,6 +107,18 @@ namespace bio {
 
     constexpr u32 InvalidHandle = 0;
 
+}
+
+inline constexpr u64 operator ""_KB(u64 n) {
+    return n * 0x400;
+}
+
+inline constexpr u64 operator ""_MB(u64 n) {
+    return operator ""_KB(n) * 0x400;
+}
+
+inline constexpr u64 operator ""_GB(u64 n) {
+    return operator ""_MB(n) * 0x400;
 }
 
 #define BIO_BITMASK(n) (1 << n)
