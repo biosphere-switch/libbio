@@ -1,23 +1,38 @@
 
-#include <bio/crt0/crt0_ModuleName.hpp>
-#include <bio/util/util_String.hpp>
-#include <bio/mem/mem_Memory.hpp>
-#include <bio/crt0/crt0_Exit.hpp>
+#include <bio/crt0/crt0_Types.hpp>
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/service/service_Services.hpp>
-#include <bio/dyn/dyn_Module.hpp>
-#include <bio/util/util_List.hpp>
-#include <bio/fs/fs_Api.hpp>
-#include <bio/os/os_Version.hpp>
 
 using namespace bio;
 
-BIO_CRT0_DEFINE_MODULE_NAME("custom-service-client-test");
+namespace bio::crt0 {
+
+    __attribute__((section(".module_name")))
+    auto g_ModuleName = BIO_CRT0_MAKE_MODULE_NAME("custom-service-client-test");
+
+    constexpr u64 HeapSize = 128_MB;
+
+    Result InitializeHeap(void *hbl_heap_address, u64 hbl_heap_size, void *&out_heap_address, u64 &out_heap_size) {
+        if(hbl_heap_address != nullptr) {
+            out_heap_address = hbl_heap_address;
+            out_heap_size = hbl_heap_size;
+        }
+        else {
+            void *heap_addr;
+            BIO_RES_TRY(svc::SetHeapSize(heap_addr, HeapSize));
+
+            out_heap_address = heap_addr;
+            out_heap_size = HeapSize;
+        }
+        return ResultSuccess;
+    }
+
+}
 
 namespace bio::diag {
 
-    auto g_DefaultAssertMode = AssertMode::ProcessExit;
+    auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::ProcessExit;
 
 }
 

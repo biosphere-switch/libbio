@@ -22,6 +22,6 @@ namespace bio::service::lm {
 
     };
 
-    BIO_SERVICE_DECLARE_GLOBAL_SESSION(LogService);
+    BIO_SERVICE_DECLARE_GLOBAL_SESSION(LogService)
 
 }

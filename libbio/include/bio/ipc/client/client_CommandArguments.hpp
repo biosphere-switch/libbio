@@ -34,13 +34,23 @@ namespace bio::ipc::client {
 
     struct InProcessId : public CommandArgument {
 
+        u64 pid_value;
+        u64 offset;
+
+        constexpr InProcessId(u64 value = 0) : pid_value(value), offset(0) {}
+
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
                 case CommandState::BeforeHeaderInitialization: {
                     ctx.in.send_process_id = true;
                     util::OffsetCalculator off(ctx.in.data_size);
-                    off.IncrementOffset<u64>();
+                    this->offset = off.GetNextOffset<u64>();
                     ctx.in.data_size = off.GetCurrentOffset();
+                    break;
+                }
+                case CommandState::BeforeRequest: {
+                    util::OffsetCalculator off(ctx.in.data_offset);
+                    off.SetByOffset(this->offset, this->pid_value);
                     break;
                 }
                 default:

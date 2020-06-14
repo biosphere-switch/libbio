@@ -2,7 +2,7 @@
 ROOT_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 SOURCE_DIR := $(ROOT_DIR)/source
-INCLUDE_DIRS := $(SOURCE_DIR) $(ROOT_DIR)/include $(BIOSPHERE_ROOT)/modules/libbio/include/
+INCLUDE_DIRS := $(SOURCE_DIR) $(BIOSPHERE_ROOT)/modules/libbio/include/
 OUTPUT_DIR := $(ROOT_DIR)/output
 BUILD_DIR := $(ROOT_DIR)/build
 
@@ -10,7 +10,7 @@ CPP_SOURCES := $(shell find $(SOURCE_DIR) -type f \( -iname \*.cpp -o -iname \*.
 C_SOURCES := $(shell find $(SOURCE_DIR) -type f -name "*.c")
 S_SOURCES := $(shell find $(SOURCE_DIR) -type f \( -iname \*.s -o -iname \*.S \))
 
-C_FLAGS := -g -fPIC -O2 -fno-builtin-memset -fno-builtin-memcpy -ffreestanding -march=armv8-a+crc+crypto -mtune=cortex-a57 -target aarch64-none-elf -nostdlib -nostdlibinc
+C_FLAGS := -g -fPIC -O2 -fno-builtin-memset -fno-builtin-memcpy -march=armv8-a+crc+crypto -mtune=cortex-a57 -target aarch64-none-elf -nostdlib -nostdlibinc
 CXX_FLAGS := $(C_FLAGS) -std=gnu++20 -fno-exceptions -nodefaultlibs -nostdinc++
 AS_FLAGS := -arch=aarch64 -triple aarch64-none-elf
 AR_FLAGS := rcs

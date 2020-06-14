@@ -6,6 +6,7 @@
 #include <bio/os/os_Tls.hpp>
 #include <bio/os/os_Version.hpp>
 #include <bio/hbl/hbl_HbAbi.hpp>
+#include <bio/mem/mem_VirtualMemory.hpp>
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/service/service_Services.hpp>
@@ -15,14 +16,45 @@
 
 void Main();
 
+namespace bio::mem {
+
+    extern VirtualRegion g_AddressSpace;
+    extern VirtualRegion g_StackRegion;
+    extern VirtualRegion g_HeapRegion;
+    extern VirtualRegion g_LegacyAliasRegion;
+
+    namespace {
+
+        Result ReadRegionInfo(svc::InfoId info_addr_id, svc::InfoId info_size_id, VirtualRegion &region) {
+            u64 address;
+            BIO_RES_TRY(svc::GetInfo(address, info_addr_id, svc::CurrentProcessPseudoHandle, 0));
+
+            u64 size;
+            BIO_RES_TRY(svc::GetInfo(size, info_size_id, svc::CurrentProcessPseudoHandle, 0));
+
+            region.start = address;
+            region.end = address + size;
+            return ResultSuccess;            
+        }
+
+        void InitializeVirtualMemory() {
+            auto rc = ReadRegionInfo(svc::InfoId::AslrRegionAddress, svc::InfoId::AslrRegionSize, g_AddressSpace);
+            if(rc.IsFailure()) {
+                // TODO: 1.0.0 support
+            }
+            BIO_DIAG_RES_ASSERT(ReadRegionInfo(svc::InfoId::StackRegionAddress, svc::InfoId::StackRegionSize, g_StackRegion));
+            BIO_DIAG_RES_ASSERT(ReadRegionInfo(svc::InfoId::HeapRegionAddress, svc::InfoId::HeapRegionSize, g_HeapRegion));
+            BIO_DIAG_RES_ASSERT(ReadRegionInfo(svc::InfoId::AliasRegionAddress, svc::InfoId::AliasRegionSize, g_LegacyAliasRegion));
+        }
+
+    }
+
+}
+
 namespace bio::crt0 {
 
     // Can be used to handle exceptions
-    __attribute__((weak))
-    void ExceptionHandler(ExceptionDescription desc) {
-        svc::ReturnFromException(os::result::ResultUnhandledException);
-        while(true) {}
-    }
+    void ExceptionHandler(ExceptionDescription desc);
 
     // Must be implemented by the application
     Result InitializeHeap(void *hbl_heap_address, u64 hbl_heap_size, void *&out_heap_address, u64 &out_size);
@@ -51,6 +83,7 @@ namespace bio::crt0 {
             u32 page_info;
             BIO_DIAG_RES_ASSERT(svc::QueryMemory(info, page_info, reinterpret_cast<u64>(&info)));
 
+            // Initialize the thread object with a default name and its handle, and set it on the TLS
             g_MainThread.InitializeWith(main_thread_handle, "MainThread", reinterpret_cast<void*>(info.address), info.size, false);
             tls->thread_addr = &g_MainThread;
         }
@@ -76,46 +109,50 @@ namespace bio::crt0 {
             return ResultSuccess;
         }
 
+        inline void HandleException(ExceptionDescription error_desc) {
+            svc::ReturnFromException(os::result::ResultUnhandledException);
+            while(true) {}
+        }
+
     }
 
-    // Similar to offical rtld functionality
+    // Similar to offical rtld functionality - possible entries:
 
-    // x0 and x1 might be different things, depending on the context (data from NRO, exception handling data...):
-    // - When launched from hbloader/hbmenu (as a NRO), x0 == hbl config entries and x1 == -1
-    // - When launched as a normal process (as a NSO), x0 == nullptr, and x1 == main thread handle
     // - When re-launched due to exception handling, x0 == exception description (error type) and x1 == stack top
 
     __attribute__((weak))
-    void Entry(void *x0_v, u64 x1_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
-        const auto has_exception = (x0_v != nullptr) && (x1_v != -1);
+    void ExceptionEntry(ExceptionDescription error_desc, void *stack_top) {
+        HandleException(error_desc);
+    }
 
-        // If we are told to handle an exception, handle it.
-        if(has_exception) {
-            auto desc = static_cast<ExceptionDescription>(reinterpret_cast<u64>(x0_v));
-            ExceptionHandler(desc);
-        }
+    // - When launched from hbloader/hbmenu (as a NRO), x0 == hbl config entries and x1 == -1
+    // - When launched as a normal process (as a NSO), x0 == nullptr, and x1 == main thread handle
 
+    __attribute__((weak))
+    void NormalEntry(void *context_ptr, u64 main_thread_handle_v, void *aslr_base_address, crt0::ExitFunction lr, void *bss_start, void *bss_end) {
+        const auto is_hbl_nro = (context_ptr != nullptr) && (main_thread_handle_v == -1);
+        auto main_thread_handle = static_cast<u32>(main_thread_handle_v);
+        
         // Clear .bss section
         ClearBss(bss_start, bss_end);
 
         // Relocate ourselves
         dyn::RelocateModule(aslr_base_address);
-        
-        const auto is_hbl_nro = (x0_v != nullptr) && (x1_v == -1);
-
-        auto main_thread_handle = static_cast<u32>(x1_v);
 
         // Set exit function if we're given a valid one (svc::ExitProcess is used by default)
         if(lr != nullptr) {
             SetExitFunction(lr);
         }
 
+        // Initialize virtual memory.
+        mem::InitializeVirtualMemory();
+
         void *hbl_heap_address = nullptr;
         auto hbl_heap_size = 0;
         u32 hbl_hos_version = 0;
 
         if(is_hbl_nro) {
-            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(x0_v);
+            auto arg = reinterpret_cast<hbl::ABIConfigEntry*>(context_ptr);
             while(true) {
                 auto key = static_cast<hbl::ABIConfigKey>(arg->key);
                 if(key == hbl::ABIConfigKey::EOL) {
@@ -167,7 +204,7 @@ namespace bio::crt0 {
         // Call code entrypoint.
         Main();
 
-        // Here is where Nintendo/libnx/libtransistor would dispose global services, modules, etc.
+        // Here is where Nintendo/libnx/libtransistor/etc. would dispose global services, modules, etc.
         // No disposing is made here since everything which should be disposed is implemented as shared objects, which are auto-disposed on program exit.
 
         // Successful exit by default.

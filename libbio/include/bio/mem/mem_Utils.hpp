@@ -71,10 +71,13 @@ namespace bio::mem {
 		Copy<U>(dest, src, sizeof(T));
 	}
 
+	template<typename T>
+	inline constexpr bool IsAligned(T value, u64 align) {
+		return (static_cast<u64>(value) & (align - 1)) == 0;
+	}
+
 	inline bool IsAddressAligned(void *addr, u64 align) {
-		const auto addr64 = reinterpret_cast<u64>(addr);
-		const auto inv_mask = align - 1;
-		return (addr64 & inv_mask) == 0;
+		return IsAligned(reinterpret_cast<u64>(addr), align);
 	}
 
 	template<typename T>

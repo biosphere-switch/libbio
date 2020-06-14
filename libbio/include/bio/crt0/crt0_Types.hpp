@@ -14,4 +14,16 @@ namespace bio::crt0 {
         BadSvc = 0x301,
     };
 
+    struct ModuleName {
+        u32 zero;
+        u32 length;
+        char name[0x200];
+    };
+
+}
+
+#define BIO_CRT0_MAKE_MODULE_NAME(mod_name) (::bio::crt0::ModuleName) { \
+    .zero = 0, \
+    .length = __builtin_strlen(BIO_ENSURE_STR_LITERAL(mod_name)), \
+    .name = BIO_ENSURE_STR_LITERAL(mod_name), \
 }

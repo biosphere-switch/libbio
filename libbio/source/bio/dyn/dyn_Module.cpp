@@ -53,7 +53,7 @@ namespace bio::dyn {
         // TODO: find a proper way to get the program ID on >3.0.0, when this svc info type didn't exist
         // Default to album/hbl in case we aren't able to get it
         u64 cur_program_id = 0x010000000000100D;
-        svc::GetInfo(cur_program_id, 18, svc::CurrentProcessPseudoHandle, 0);
+        svc::GetInfo(cur_program_id, svc::InfoId::ProgramId, svc::CurrentProcessPseudoHandle, 0);
 
         const auto nrr_size = mem::AlignUp(nrr::GetNrrSize(1), mem::PageAlignment);
     

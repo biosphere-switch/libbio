@@ -117,12 +117,12 @@ DEF_SVC svcClearEvent
 	ret
 END_DEF_SVC
 
-DEF_SVC svcMapSharedMemory
+DEF_SVC _ZN3bio3svc15MapSharedMemoryEjPvyNS0_16MemoryPermissionE
 	svc 0x13
 	ret
 END_DEF_SVC
 
-DEF_SVC svcUnmapSharedMemory
+DEF_SVC _ZN3bio3svc17UnmapSharedMemoryEjPvy
 	svc 0x14
 	ret
 END_DEF_SVC
@@ -245,7 +245,7 @@ DEF_SVC _ZN3bio3svc19ReturnFromExceptionENS_6ResultE
 	ret
 END_DEF_SVC
 
-DEF_SVC _ZN3bio3svc7GetInfoERyjjy
+DEF_SVC _ZN3bio3svc7GetInfoERyNS0_6InfoIdEjy
 	str x0, [sp, #-16]!
 	svc 0x29
 	ldr x2, [sp], #16

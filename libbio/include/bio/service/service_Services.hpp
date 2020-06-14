@@ -9,3 +9,4 @@
 #include <bio/service/vi/vi_RootService.hpp>
 #include <bio/service/nv/nv_DrvService.hpp>
 #include <bio/service/dispdrv/dispdrv_HOSBinderDriver.hpp>
+#include <bio/service/hid/hid_Service.hpp>

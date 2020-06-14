@@ -10,9 +10,10 @@ namespace bio::util {
         T array[N];
         u64 size;
 
-        SizedArray() {
-            this->Clear();
-        }
+        constexpr SizedArray() : array(), size(0) {}
+
+        template<typename ...Ts>
+        constexpr SizedArray(Ts &&...ts) : array{ts...}, size(sizeof...(Ts)) {}
 
         inline constexpr T *Get() {
             return this->array;

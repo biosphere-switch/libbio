@@ -3,14 +3,15 @@
 #include <bio/util/util_Templates.hpp>
 #include <bio/service/sm/sm_UserNamedPort.hpp>
 #include <bio/service/lm/lm_LogService.hpp>
-#include <bio/crt0/crt0_ModuleName.hpp>
+#include <bio/crt0/crt0_Types.hpp>
 #include <bio/os/os_Tls.hpp>
 #include <bio/os/os_Mutex.hpp>
 
 namespace bio::crt0 {
 
     // Use our module name to identify our logs
-    extern ModuleName g_ModuleName;
+
+    // extern ModuleName g_ModuleName;
 
 }
 
@@ -177,7 +178,7 @@ namespace bio::diag {
 
         head_packet->payload.file_name.Initialize(LogDataChunkKey::FileName, metadata.source_info.file_name, metadata.source_info.file_name_len);
         head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
-        head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
+        // head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
         head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
 
         auto remaining_len = metadata.text_log_len;

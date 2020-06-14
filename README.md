@@ -38,6 +38,8 @@ Submodules:
 
 - GPU (and binder error codes): submodule 9 (2420-09**)
 
+- Input: submodule 10 (2420-10**)
+
 ## TODO
 
 - Examples:
@@ -66,23 +68,15 @@ Submodules:
 
   - Events
 
-  - Shared memory
+  - Shared memory (SVCs implemented)
 
-  - Transfer memory (SVC implemented)
+  - Transfer memory (SVCs implemented)
 
   - Waitable system (almost finished)
 
 - Extend GPU implementation:
 
   - More layer types (normal layers with ARUIDs, managed layers, ...)
-
-  - Make use of other NVIDIA components if necessary (maps, address spaces, ...)
-
-- Implement input:
-
-  - Implement hid service
-
-  - Add a simplified input implementation under `::input` namespace (like old libbio)
 
 - Implement applet service (has a lot of useful and essential commands, library applet launching, ...)
 
@@ -129,3 +123,7 @@ Submodules:
 - Implemented a basic waitable system (half of it) to simplify handle waiting.
 
 - Added arm system tick utilities.
+
+- Implemented virtual memory reserving.
+
+- Implemented hid service and an input system.

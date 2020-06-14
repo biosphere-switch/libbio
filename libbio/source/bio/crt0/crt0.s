@@ -20,8 +20,7 @@ __module_header:
 
 .section .text, "x"
 
-.global _entry
-_entry:
+__normal_entry:
 	// Set aslr base address as 3rd argument
 	adrp x2, _start
 
@@ -34,5 +33,18 @@ _entry:
 	adrp x5, __bss_end
 	add x5, x5, #:lo12:__bss_end
 	
-	// Call actual entrypoint: bio::crt0::Entry(x0_v, x1_v, aslr_base_address, lr, bss_start, bss_end)
-	b _ZN3bio4crt05EntryEPvyS1_PFviES1_S1_
+	// bio::crt0::NormalEntry(context_ptr, main_thread_handle_v, aslr_base_address, lr, bss_start, bss_end)
+	b _ZN3bio4crt011NormalEntryEPvyS1_PFviES1_S1_
+
+__exception_entry:
+	// bio::crt0::ExceptionEntry(error_desc, stack_top)
+	b _ZN3bio4crt014ExceptionEntryENS0_20ExceptionDescriptionEPv
+
+// Actual entrypoint called
+
+_entry:
+	// Determine which entry we need to call (if x0 != 0 and x1 != -1, we're being called to handle an exception)
+	cmp x0, #0
+    ccmn x1, #1, #4, ne
+    beq __normal_entry
+    bne __exception_entry

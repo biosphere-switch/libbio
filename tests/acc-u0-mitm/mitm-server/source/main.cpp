@@ -1,4 +1,4 @@
-#include <bio/crt0/crt0_ModuleName.hpp>
+#include <bio/crt0/crt0_Types.hpp>
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/ipc/server/server_ServerManager.hpp>
@@ -6,18 +6,20 @@
 
 using namespace bio;
 
-BIO_CRT0_DEFINE_MODULE_NAME("acc-u0-mitm-server-test");
-
 namespace bio::crt0 {
 
-    u8 stacked_heap[0x20000];
+    __attribute__((section(".module_name")))
+    auto g_ModuleName = BIO_CRT0_MAKE_MODULE_NAME("acc-u0-mitm-server-test");
 
-    Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
-        mem::ZeroArray(stacked_heap);
-        out_heap_address = stacked_heap;
-        out_size = sizeof(stacked_heap);
+    constexpr u64 HeapSize = 128_KB;
+    u8 g_HeapStack[HeapSize];
+
+    Result InitializeHeap(void *hbl_heap_address, u64 hbl_heap_size, void *&out_heap_address, u64 &out_heap_size) {
+        mem::ZeroArray(g_HeapStack);
+        out_heap_address = g_HeapStack;
+        out_heap_size = HeapSize;
         return ResultSuccess;
-    };
+    }
 
 }
 
