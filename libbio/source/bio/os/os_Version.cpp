@@ -3,21 +3,17 @@
 
 namespace bio::os {
 
+    Version g_SystemVersion;
+
     namespace {
 
-        Version g_Version;
-        os::Mutex g_VersionLock;
+        os::Mutex g_SystemVersionLock;
 
     }
 
     Version GetSystemVersion() {
-        os::ScopedMutexLock lk(g_VersionLock);
-        return g_Version;
-    }
-
-    void SetSystemVersion(Version ver) {
-        os::ScopedMutexLock lk(g_VersionLock);
-        g_Version = ver;
+        os::ScopedMutexLock lk(g_SystemVersionLock);
+        return g_SystemVersion;
     }
 
 }

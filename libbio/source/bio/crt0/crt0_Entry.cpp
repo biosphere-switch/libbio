@@ -16,6 +16,20 @@
 
 void Main();
 
+namespace bio::os {
+
+    extern Version g_SystemVersion;
+
+    namespace {
+
+        inline void SetSystemVersion(const Version &ver) {
+            g_SystemVersion = ver;
+        }
+
+    }
+
+}
+
 namespace bio::mem {
 
     extern VirtualRegion g_AddressSpace;

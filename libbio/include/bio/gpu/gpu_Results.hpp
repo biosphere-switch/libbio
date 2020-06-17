@@ -33,6 +33,7 @@ namespace bio::gpu::result {
     BIO_RDEF_DEFINE_RES(InvalidIoctlFd, 21);
     BIO_RDEF_DEFINE_RES(NotEnoughReadSpace, 22);
     BIO_RDEF_DEFINE_RES(NotEnoughWriteSpace, 23);
+    BIO_RDEF_DEFINE_RES(InvalidServiceType, 24);
 
     inline constexpr Result ConvertBinderErrorCode(BinderErrorCode err) {
         #define _BIO_GPU_BINDER_ERROR_CODE_CASE_CONVERT(name) \

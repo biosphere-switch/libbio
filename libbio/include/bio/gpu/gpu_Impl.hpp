@@ -5,7 +5,10 @@
 
 namespace bio::gpu {
 
-    Result Initialize(service::nv::DrvServiceType type, u32 transfer_mem_size);
+    constexpr i64 LayerMinimumZ = -1;
+    constexpr i64 LayerMaximumZ = -2;
+
+    Result Initialize(service::nv::DrvServiceType nv_service_type, service::vi::RootServiceType vi_service_type, u32 transfer_mem_size);
     void Finalize();
 
     Result GetHOSBinderDriver(mem::SharedObject<service::dispdrv::HOSBinderDriver> &out_service);
@@ -15,6 +18,6 @@ namespace bio::gpu {
     Result GetNvHostFd(u32 &out_fd);
     Result GetNvHostCtrlFd(u32 &out_fd);
 
-    Result CreateStrayLayerSurface(const char *display_name, service::vi::LayerFlags stray_layer_flags, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface);
-
+    Result CreateStrayLayerSurface(const char *display_name, service::vi::LayerFlags layer_flags, u32 width, u32 height, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface);
+    Result CreateManagedLayerSurface(const char *display_name, service::vi::LayerFlags layer_flags, u64 aruid, f32 x, f32 y, u32 width, u32 height, i64 z, u32 buffer_count, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, mem::SharedObject<Surface> &out_surface);
 }

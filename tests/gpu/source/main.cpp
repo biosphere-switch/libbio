@@ -134,15 +134,15 @@ class SurfaceBuffer {
 
 };
 
+#include <bio/input/input_Impl.hpp>
+
 void Main() {
-    BIO_DIAG_RES_ASSERT(gpu::Initialize(service::nv::DrvServiceType::Applet, 0x800000));
-    
     const auto color_fmt = gpu::ColorFormat::R8G8B8A8;
     const auto pixel_fmt = gpu::PixelFormat::RGBA_8888;
     const auto layout = gpu::Layout::BlockLinear;
-    const auto buf_count = 2;
+    const u32 buf_count = 2;
     mem::SharedObject<gpu::Surface> surface;
-    BIO_DIAG_RES_ASSERT(gpu::CreateStrayLayerSurface("Default", service::vi::LayerFlags::Default, buf_count, color_fmt, pixel_fmt, layout, surface));
+    BIO_DIAG_RES_ASSERT(gpu::CreateStrayLayerSurface("Default", service::vi::LayerFlags::Default, 1280, 720, buf_count, color_fmt, pixel_fmt, layout, surface));
     
     u32 x = 50;
     u32 y = 50;

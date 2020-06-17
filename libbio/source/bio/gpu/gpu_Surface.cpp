@@ -2,6 +2,8 @@
 #include <bio/gpu/gpu_Ioctl.hpp>
 #include <bio/gpu/gpu_Impl.hpp>
 
+#include <bio/diag/diag_Log.hpp>
+
 namespace bio::gpu {
 
     Result Surface::Connect() {
@@ -24,11 +26,9 @@ namespace bio::gpu {
         const auto scan_fmt = DisplayScanFormat::Progressive;
         const u32 pid = 42;
         const auto bpp = CalculateBytesPerPixel(this->color_fmt);
-        const auto width = this->qbo.width;
-        const auto height = this->qbo.height;
-        const auto aligned_width = AlignWidth(bpp, width);
+        const auto aligned_width = AlignWidth(bpp, this->width);
         const auto aligned_width_bytes = aligned_width * bpp;
-        const auto aligned_height = AlignHeight(height);
+        const auto aligned_height = AlignHeight(this->height);
         const auto stride = aligned_width;
         this->single_buffer_size = aligned_width_bytes * aligned_height;
         const auto usage = GraphicsAllocatorUsage::HardwareComposer | GraphicsAllocatorUsage::HardwareRender | GraphicsAllocatorUsage::HardwareTexture;
@@ -55,8 +55,8 @@ namespace bio::gpu {
 
         this->graphic_buffer = {};
         this->graphic_buffer.header.magic = GraphicBufferHeader::Magic;
-        this->graphic_buffer.header.width = width;
-        this->graphic_buffer.header.height = height;
+        this->graphic_buffer.header.width = this->width;
+        this->graphic_buffer.header.height = this->height;
         this->graphic_buffer.header.stride = stride;
         this->graphic_buffer.header.pixel_format = this->pixel_fmt;
         this->graphic_buffer.header.usage = usage;
@@ -71,8 +71,8 @@ namespace bio::gpu {
         this->graphic_buffer.stride = stride;
         this->graphic_buffer.full_size = this->single_buffer_size;
         this->graphic_buffer.plane_count = 1;
-        this->graphic_buffer.planes[0].width = width;
-        this->graphic_buffer.planes[0].height = height;
+        this->graphic_buffer.planes[0].width = this->width;
+        this->graphic_buffer.planes[0].height = this->height;
         this->graphic_buffer.planes[0].color_format = this->color_fmt;
         this->graphic_buffer.planes[0].layout = this->layout;
         this->graphic_buffer.planes[0].pitch = aligned_width_bytes;
@@ -104,14 +104,11 @@ namespace bio::gpu {
         const auto buf_size = mem::AlignUp(this->buffer_count * this->single_buffer_size, mem::PageAlignment);
         BIO_RES_TRY(svc::SetMemoryAttribute(this->buffer_data, buf_size, 0, svc::MemoryAttribute::None));
         mem::Free(this->buffer_data);
+
+        BIO_RES_TRY(this->layer_destroy_fn(this->layer_id));
+
         mem::SharedObject<service::vi::ApplicationDisplayService> application_display_srv;
         BIO_RES_TRY(GetApplicationDisplayService(application_display_srv));
-        if(this->is_stray_layer) {
-            BIO_RES_TRY(application_display_srv->DestroyStrayLayer(this->layer_id));
-        }
-        else {
-            // ...?
-        }
         BIO_RES_TRY(application_display_srv->CloseDisplay(this->display_id));
 
         return ResultSuccess;
@@ -121,7 +118,7 @@ namespace bio::gpu {
         if(is_async) {
             while(true) {
                 BIO_RES_TRY(this->WaitForBuffer());
-                auto rc = this->binder.DequeueBuffer(true, this->graphic_buffer.header.width, this->graphic_buffer.header.height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences);
+                auto rc = this->binder.DequeueBuffer(true, this->width, this->height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences);
                 if(rc.IsSuccess()) {
                     break;
                 }
@@ -132,7 +129,7 @@ namespace bio::gpu {
             }
         }
         else {
-            BIO_RES_TRY(this->binder.DequeueBuffer(false, this->graphic_buffer.header.width, this->graphic_buffer.header.height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences));
+            BIO_RES_TRY(this->binder.DequeueBuffer(false, this->width, this->height, false, this->graphic_buffer.usage, out_slot, out_has_fences, out_fences));
         }
 
         auto has_requested = this->slot_has_requested.GetAt(out_slot);

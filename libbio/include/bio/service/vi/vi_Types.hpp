@@ -9,6 +9,7 @@ namespace bio::service::vi {
     };
 
     enum class LayerFlags : u32 {
+        None = 0,
         Default = BIO_BITMASK(0),
     };
 

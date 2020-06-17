@@ -41,19 +41,18 @@ namespace bio::os {
         }
 
         inline constexpr bool HigherThan(const Version &ver) {
-            if(this->major == ver.major) {
-                if(this->minor == ver.minor) {
-                    if(this->micro == ver.micro) {
-                        return true;
-                    }
-                }
-            }
             return !this->Equals(ver) && !this->LowerThan(ver);
         }
 
     };
 
     Version GetSystemVersion();
-    void SetSystemVersion(Version ver);
 
 }
+
+#define _BIO_OS_SYSTEM_VERSION_BASE(fn, major, minor, micro) ::bio::os::GetSystemVersion().fn({ major, minor, micro })
+#define BIO_OS_SYSTEM_VERSION_HIGHER(major, minor, micro) _BIO_OS_SYSTEM_VERSION_BASE(HigherThan, major, minor, micro)
+#define BIO_OS_SYSTEM_VERSION_LOWER(major, minor, micro) _BIO_OS_SYSTEM_VERSION_BASE(LowerThan, major, minor, micro)
+#define BIO_OS_SYSTEM_VERSION_EQUALS(major, minor, micro) _BIO_OS_SYSTEM_VERSION_BASE(Equals, major, minor, micro)
+#define BIO_OS_SYSTEM_VERSION_EQUAL_HIGHER(major, minor, micro) BIO_OS_SYSTEM_VERSION_EQUALS(major, minor, micro) || BIO_OS_SYSTEM_VERSION_HIGHER(major, minor, micro)
+#define BIO_OS_SYSTEM_VERSION_EQUAL_LOWER(major, minor, micro) BIO_OS_SYSTEM_VERSION_EQUALS(major, minor, micro) || BIO_OS_SYSTEM_VERSION_LOWER(major, minor, micro)

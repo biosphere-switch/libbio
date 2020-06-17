@@ -217,6 +217,7 @@ namespace bio::ipc::server {
         private:
             util::LinkedList<ServerObject*> servers;
             util::SizedArray<u32, os::MaxWaitObjectCount> wait_handles;
+            util::LinkedList<os::Thread> process_threads;
 
             static Result RegisterMitmQuerySession(u32 mitm_query_handle, ShouldMitmFunction fn);
 
@@ -227,7 +228,9 @@ namespace bio::ipc::server {
                     auto &server_handles = server->GetHandles();
                     for(u32 j = 0; j < server_handles.GetSize(); j++) {
                         auto &server_handle = server_handles.GetAt(j);
-                        this->wait_handles.Push(server_handle.handle);
+                        if(server_handle.handle != InvalidHandle) {
+                            this->wait_handles.Push(server_handle.handle);
+                        }
                     }
                 }
             }

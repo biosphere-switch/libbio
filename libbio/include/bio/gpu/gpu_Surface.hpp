@@ -6,11 +6,15 @@
 
 namespace bio::gpu {
 
+    using LayerDestroyFunction = Result(*)(u64);
+
     class Surface {
 
         private:
             Binder binder;
             QueueBufferOutput qbo;
+            u32 width;
+            u32 height;
             void *buffer_data;
             u64 single_buffer_size;
             u32 buffer_count;
@@ -23,7 +27,7 @@ namespace bio::gpu {
             u64 layer_id;
             u32 vsync_event_handle;
             u32 buffer_event_handle;
-            bool is_stray_layer;
+            LayerDestroyFunction layer_destroy_fn;
 
             Result Connect();
             Result Initialize();
@@ -32,7 +36,7 @@ namespace bio::gpu {
             Result Finalize();
 
         public:
-            constexpr Surface(i32 binder_handle, u32 buffer_count, u64 display_id, u64 layer_id, bool is_stray_layer, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout) : binder(binder_handle), qbo(), buffer_data(nullptr), single_buffer_size(0), slot_has_requested(), graphic_buffer(), buffer_count(buffer_count), color_fmt(color_fmt), pixel_fmt(pixel_fmt), layout(layout), display_id(display_id), layer_id(layer_id), is_stray_layer(is_stray_layer) {}
+            constexpr Surface(i32 binder_handle, u32 buffer_count, u64 display_id, u64 layer_id, u32 width, u32 height, ColorFormat color_fmt, PixelFormat pixel_fmt, Layout layout, LayerDestroyFunction layer_destroy_fn) : binder(binder_handle), qbo(), width(width), height(height), buffer_data(nullptr), single_buffer_size(0), slot_has_requested(), graphic_buffer(), buffer_count(buffer_count), color_fmt(color_fmt), pixel_fmt(pixel_fmt), layout(layout), display_id(display_id), layer_id(layer_id), layer_destroy_fn(layer_destroy_fn) {}
 
             ~Surface() {
                 this->FinalizeAll();
@@ -75,11 +79,11 @@ namespace bio::gpu {
             }
 
             u32 GetWidth() {
-                return this->qbo.width;
+                return this->width;
             }
 
             u32 GetHeight() {
-                return this->qbo.height;
+                return this->height;
             }
 
             ColorFormat GetColorFormat() {
