@@ -24,21 +24,19 @@ Submodules:
 
 - Dynamic: submodule 2 (2420-02**)
 
-- Client IPC: submodule 3 (2420-03**)
+- IPC: submodule 3 (2420-03**)
 
-- Server IPC: submodule 4 (2420-04**)
+- Diag: submodule 4 (2420-04**)
 
-- Diag: submodule 5 (2420-05**)
+- Filesystem: submodule 5 (2420-05**)
 
-- Filesystem: submodule 6 (2420-06**)
+- Util: submodule 6 (2420-06**)
 
-- Util: submodule 7 (2420-07**)
+- NV driver error codes: submodule 7 (2420-07**)
 
-- NV driver error codes: submodule 8 (2420-08**)
+- GPU (and binder error codes): submodule 8 (2420-08**)
 
-- GPU (and binder error codes): submodule 9 (2420-09**)
-
-- Input: submodule 10 (2420-10**)
+- Input: submodule 9 (2420-09**)
 
 ## TODO
 

@@ -1,4 +1,4 @@
-#include <bio/crt0/crt0_ModuleName.hpp>
+#include <bio/crt0/crt0_Types.hpp>
 #include <bio/diag/diag_Log.hpp>
 #include <bio/diag/diag_Assert.hpp>
 #include <bio/ipc/server/server_ServerManager.hpp>
@@ -6,18 +6,20 @@
 
 using namespace bio;
 
-BIO_CRT0_DEFINE_MODULE_NAME("custom-service-server-test");
-
 namespace bio::crt0 {
 
-    u8 stacked_heap[0x20000];
+    __attribute__((section(".module_name")))
+    auto g_ModuleName = BIO_CRT0_MAKE_MODULE_NAME("custom-service-server-test");
 
-    Result InitializeHeap(void *heap_address, u64 heap_size, void *&out_heap_address, u64 &out_size) {
-        mem::ZeroArray(stacked_heap);
-        out_heap_address = stacked_heap;
-        out_size = sizeof(stacked_heap);
+    constexpr u64 HeapSize = 128_KB;
+    u8 g_HeapStack[HeapSize];
+
+    Result InitializeHeap(void *hbl_heap_address, u64 hbl_heap_size, void *&out_heap_address, u64 &out_heap_size) {
+        mem::ZeroArray(g_HeapStack);
+        out_heap_address = g_HeapStack;
+        out_heap_size = HeapSize;
         return ResultSuccess;
-    };
+    }
 
 }
 
@@ -26,9 +28,6 @@ namespace bio::diag {
     auto g_DefaultAssertMode = AssertMode::DiagLog | AssertMode::Fatal;
 
 }
-
-#include <bio/ipc/server/server_ServerManager.hpp>
-#include <bio/ipc/server/server_CommandArguments.hpp>
 
 namespace server {
 
@@ -43,16 +42,32 @@ namespace server {
                 return 0x10;
             }
 
-        public:
-            Result Sample0(ipc::CommandContext &ctx) {
-                BIO_DIAG_LOG("Sample0 -> returning value...");
+        private:
+            u32 inner_value;
 
-                return this->RequestCommandEnd(ctx, ResultSuccess, ipc::server::Out<u32>(420));
+        public:
+            BioDevService() : inner_value(0) {}
+
+            void SetValue32(ipc::CommandContext &ctx) {
+                u32 value;
+                RequestCommandBegin(ctx, ipc::server::In(value));
+                BIO_DIAG_LOGF("SetValue32 -> storing %d...", value);
+
+                this->inner_value = value;
+
+                RequestCommandEnd(ctx, ResultSuccess);
+            }
+
+            void GetValue32(ipc::CommandContext &ctx) {
+                BIO_DIAG_LOGF("GetValue32 -> returning %d...", this->inner_value);
+
+                RequestCommandEnd(ctx, ResultSuccess, ipc::server::Out(this->inner_value));
             }
 
         public:
             BIO_IPC_SERVER_DECLARE_COMMAND_HANDLERS {
-                BIO_IPC_SERVER_COMMAND_HANDLER(0, Sample0),
+                BIO_IPC_SERVER_COMMAND_HANDLER(0, SetValue32),
+                BIO_IPC_SERVER_COMMAND_HANDLER(1, GetValue32),
             };
 
     };

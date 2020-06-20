@@ -5,7 +5,7 @@
 
 namespace bio::service::nv::result {
 
-    BIO_RDEF_MODULE(8);
+    BIO_RDEF_MODULE(7);
 
     BIO_RDEF_DEFINE_RES(ErrorCodeUnknown, 1);
     BIO_RDEF_DEFINE_RES(ErrorCodeNotImplemented, 2);

@@ -1,7 +1,7 @@
 
 #pragma once
 #include <bio/os/os_Tls.hpp>
-#include <bio/ipc/client/client_Results.hpp>
+#include <bio/ipc/ipc_Results.hpp>
 #include <bio/util/util_Array.hpp>
 #include <bio/util/util_Templates.hpp>
 #include <bio/util/util_Offset.hpp>
@@ -179,6 +179,14 @@ namespace bio::ipc {
     struct DomainOutDataHeader {
         u32 out_object_count;
         u32 pad[3];
+    };
+
+    enum class ControlRequestId : u32 {
+        ConvertCurrentObjectToDomain,
+        CopyFromCurrentDomain,
+        CloneCurrentObject,
+        QueryPointerBufferSize,
+        CloneCurrentObjectEx,
     };
 
     enum class BufferAttribute : u8 {

@@ -1,7 +1,6 @@
     
 #pragma once
 #include <bio/ipc/ipc_Types.hpp>
-#include <bio/ipc/server/server_Results.hpp>
 #include <bio/util/util_Array.hpp>
 #include <bio/util/util_Templates.hpp>
 
@@ -44,10 +43,6 @@ namespace bio::ipc::server {
         auto ipc_buf = GetIpcBuffer();
         auto header = reinterpret_cast<CommandHeader*>(ipc_buf);
         ipc_buf += sizeof(CommandHeader);
-
-        if(ctx.out.send_process_id) {
-            data_size += sizeof(u64);
-        }
 
         header->command_type = static_cast<u32>(type);
         header->send_static_count = static_cast<u32>(ctx.send_statics.GetSize());
@@ -118,7 +113,7 @@ namespace bio::ipc::server {
         }
         */
 
-        BIO_RET_UNLESS(header->magic == DataInHeaderMagic, result::ResultInvalidRequestCommand);
+        BIO_RET_UNLESS(header->magic == DataInHeaderMagic, cmif::result::ResultInvalidInputHeader);
         out_request_id = header->value;
 
         ctx.in.data_offset = data_offset;
@@ -159,7 +154,7 @@ namespace bio::ipc::server {
             domain_header->data_size = static_cast<u16>(rest_data_size);
             domain_header->object_id = ctx.session_copy.object_id;
             domain_header->pad = 0;
-            domain_header->token = 0; // context?
+            domain_header->token = 0;
             data_offset += sizeof(DomainInDataHeader);
             ctx.in.objects_offset = data_offset + rest_data_size;
             header = reinterpret_cast<DataHeader*>(data_offset);
@@ -175,46 +170,46 @@ namespace bio::ipc::server {
         ctx.out.data_offset = data_offset;
     }
 
-    /*
-
     // Control
 
-    inline void WriteControlCommandOnIpcBuffer(CommandContext &ctx, u32 request_id) {
+    inline Result ReadControlCommandFromIpcBuffer(CommandContext &ctx, u32 &out_request_id) {
         auto ipc_buf = GetIpcBuffer();
-        u32 data_size = 16 + sizeof(DataHeader) + ctx.in.data_size;
-
-        WriteCommandOnIpcBuffer(ctx, CommandType::Control, data_size);
         auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, ipc_buf);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
-        header->magic = DataInHeaderMagic;
-        header->version = 0; // context?
-        header->value = request_id;
-        header->token = 0;
         data_offset += sizeof(DataHeader);
+
+        BIO_RET_UNLESS(header->magic == DataInHeaderMagic, cmif::result::ResultInvalidInputHeader);
+        out_request_id = header->value;
+
         ctx.in.data_offset = data_offset;
+        ctx.in.data_size -= (16 + sizeof(DataHeader));
+        return ResultSuccess;
     }
 
-    inline Result ReadControlCommandResponseFromIpcBuffer(CommandContext &ctx) {
+    inline void WriteControlCommandResponseOnIpcBuffer(CommandContext &ctx, Result rc) {
         auto ipc_buf = GetIpcBuffer();
-        ReadCommandResponseFromIpcBuffer(ctx);
+        u32 data_size = 16 + sizeof(DataHeader) + ctx.out.data_size;
+        data_size = (data_size + 1) &~ 1;
+
+        WriteCommandResponseOnIpcBuffer(ctx, CommandType::Request, data_size);
         auto data_offset = GetAlignedDataOffset(ctx.out.data_words_offset, ipc_buf);
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
+        header->magic = DataOutHeaderMagic;
+        header->version = 0;
+        header->value = rc.GetValue();
+        header->token = 0;
         data_offset += sizeof(DataHeader);
-        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
-        BIO_RES_TRY(header->value);
 
         ctx.out.data_offset = data_offset;
-        return ResultSuccess;
     }
 
     // Close
 
-    inline void WriteCloseCommandOnIpcBuffer(CommandContext &ctx) {
-        WriteCommandOnIpcBuffer(ctx, CommandType::Close, 0);
+    inline void WriteCloseCommandResponseOnIpcBuffer(CommandContext &ctx) {
+        WriteCommandResponseOnIpcBuffer(ctx, CommandType::Close, 0);
     }
-    */
 
     enum class CommandState {
         BeforeCommandHandler,

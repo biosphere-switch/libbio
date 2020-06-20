@@ -136,16 +136,12 @@ namespace bio::ipc::server {
  
     };
 
-    /*
     struct OutProcessId : public CommandArgument {
-        u64 &pid;
-
-        constexpr OutProcessId(u64 &pid_ref) : pid(pid_ref) {}
 
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
-                case CommandState::AfterResponseParse: {
-                    this->pid = ctx.out.process_id;
+                case CommandState::BeforeResponseWrite: {
+                    ctx.out.send_process_id = true;
                     break;
                 }
                 default:
@@ -155,16 +151,25 @@ namespace bio::ipc::server {
 
     };
 
-    template<HandleMode Mode, u32 Index>
+    template<HandleMode Mode>
     struct OutHandle : public CommandArgument {
-        u32 &handle;
+        u32 handle;
 
-        constexpr OutHandle(u32 &handle_ref) : handle(handle_ref) {}
+        constexpr OutHandle(u32 handle) : handle(handle) {}
 
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
-                case CommandState::AfterResponseParse: {
-                    ctx.GetOutHandle<Mode, Index>(this->handle);
+                case CommandState::BeforeResponseWrite: {
+                    switch(Mode) {
+                        case HandleMode::Copy: {
+                            ctx.out.copy_handles.Push(this->handle);
+                            break;
+                        }
+                        case HandleMode::Move: {
+                            ctx.out.move_handles.Push(this->handle);
+                            break;
+                        }
+                    }
                     break;
                 }
                 default:
@@ -173,6 +178,5 @@ namespace bio::ipc::server {
         }
 
     };
-    */
 
 }

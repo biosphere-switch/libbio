@@ -102,7 +102,7 @@ namespace bio::svc {
     Result OutputDebugString(const char *str, u64 len); // 0x27
     void __attribute__((noreturn)) ReturnFromException(Result res);
     Result GetInfo(u64 &out_info, InfoId id, Handle handle, u64 sub_id); // 0x29
-    Result CreateSession(u32 &out_server_handle, u32 &out_client_handle, u32 unk0, u64 unk1); // 0x40
+    Result CreateSession(u32 &out_server_handle, u32 &out_client_handle, bool is_light, u64 name); // 0x40
     Result AcceptSession(u32 &out_session_handle, u32 port_handle); // 0x41
     Result ReplyAndReceive(i32 &out_index, const u32 *handles, i32 handle_count, u32 reply_target, u64 timeout); // 0x43
     Result ManageNamedPort(u32 &out_handle, const char *name, i32 max_sessions); // 0x71

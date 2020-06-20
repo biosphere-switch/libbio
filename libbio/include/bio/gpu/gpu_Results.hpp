@@ -6,7 +6,7 @@
 
 namespace bio::gpu::result {
 
-    BIO_RDEF_MODULE(9);
+    BIO_RDEF_MODULE(8);
 
     BIO_RDEF_DEFINE_RES(NotInitialized, 1);
 

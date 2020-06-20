@@ -27,34 +27,32 @@ namespace bio::ipc::server {
 
         public:
             template<typename ...Args>
-            void RequestCommandBegin(CommandContext &ctx, Args &&...args) {
+            static void RequestCommandBegin(CommandContext &ctx, Args &&...args) {
                 ctx.in.data_size = 0;
                 (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeCommandHandler), ...);
             }
 
             template<typename ...Args>
-            Result RequestCommandEnd(CommandContext &ctx, Result rc, Args &&...args) {
+            static void RequestCommandEnd(CommandContext &ctx, Result rc, Args &&...args) {
                 if(rc.IsSuccess()) {
                     (impl::ProcessCommandArgument(args, ctx, CommandState::BeforeResponseWrite), ...);
-                    WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
+                }
+                WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
+                if(rc.IsSuccess()) {
                     (impl::ProcessCommandArgument(args, ctx, CommandState::AfterResponseWrite), ...);
                 }
-                else {
-                    WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
-                }
-                return rc;
             }
 
     };
 
     template<typename T, typename ...Args>
-    concept IsServer = requires(T s, CommandContext &ctx, Result rc, Args &&...args) {
-        { s.RequestCommandBegin(ctx, args...) } -> util::SameAs<void>;
-        { s.RequestCommandEnd(ctx, rc, args...) } -> util::SameAs<Result>;
+    concept IsServer = requires(T, CommandContext &ctx, Result rc, Args &&...args) {
+        { T::RequestCommandBegin(ctx, args...) } -> util::SameAs<void>;
+        { T::RequestCommandEnd(ctx, rc, args...) } -> util::SameAs<void>;
     };
 
     template<typename S>
-    using CommandHandlerFunction = Result(S::*)(CommandContext&);
+    using CommandHandlerFunction = void(S::*)(CommandContext&);
 
     template<typename S>
     struct RequestCommandHandler {

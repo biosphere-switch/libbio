@@ -43,10 +43,10 @@ namespace server {
             }
 
         public:
-            Result GetUserCount(ipc::CommandContext &ctx) {
+            void GetUserCount(ipc::CommandContext &ctx) {
                 BIO_DIAG_LOG("GetUserCount -> returning stubbed value...");
 
-                return this->RequestCommandEnd(ctx, ResultSuccess, ipc::server::Out<u32>(69));
+                RequestCommandEnd(ctx, ResultSuccess, ipc::server::Out<u32>(69));
             }
 
         public:

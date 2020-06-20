@@ -352,7 +352,7 @@ DEF_SVC svcChangeKernelTraceState
 	ret
 END_DEF_SVC
 
-DEF_SVC svcCreateSession
+DEF_SVC _ZN3bio3svc13CreateSessionERjS1_by
 	stp x0, x1, [sp, #-16]!
 	svc 0x40
 	ldp x3, x4, [sp], #16

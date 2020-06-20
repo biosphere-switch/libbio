@@ -37,7 +37,7 @@ namespace bio::service::sm {
     };
     static_assert(sizeof(ServiceName) == ServiceName::NameLength, "Invalid");
 
-    static inline constexpr ServiceName InvalidServiceName = {};
+    constexpr ServiceName InvalidServiceName = {};
 
     struct MitmProcessInfo {
         u64 process_id;
@@ -109,7 +109,7 @@ namespace bio::ipc::client::impl {
         BIO_RES_TRY(service::sm::UserNamedPortSession->GetService(srv_name, tmp_session));
 
         if(S::IsDomain) {
-            BIO_RES_TRY(tmp_session.ConvertToDomain());
+            BIO_RES_TRY(tmp_session.ConvertCurrentObjectToDomain());
         }
 
         out_session = tmp_session;

@@ -10,12 +10,6 @@ namespace bio::ipc::client {
         auto ipc_buf = GetIpcBuffer();
         auto header = reinterpret_cast<CommandHeader*>(ipc_buf);
 
-        /*
-        if(ctx.in.send_process_id) {
-            data_size += sizeof(u64);
-        }
-        */
-
         header->command_type = static_cast<u32>(type);
         header->send_static_count = static_cast<u32>(ctx.send_statics.GetSize());
         header->send_buffer_count = static_cast<u32>(ctx.send_buffers.GetSize());
@@ -149,7 +143,7 @@ namespace bio::ipc::client {
         }
 
         data_offset += sizeof(DataHeader);
-        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
+        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, cmif::result::ResultInvalidOutputHeader);
         BIO_RES_TRY(header->value);
     
         ctx.out.data_offset = data_offset;
@@ -158,7 +152,7 @@ namespace bio::ipc::client {
 
     // Control
 
-    inline void WriteControlCommandOnIpcBuffer(CommandContext &ctx, u32 request_id) {
+    inline void WriteControlCommandOnIpcBuffer(CommandContext &ctx, ControlRequestId request_id) {
         auto ipc_buf = GetIpcBuffer();
         u32 data_size = 16 + sizeof(DataHeader) + ctx.in.data_size;
 
@@ -168,7 +162,7 @@ namespace bio::ipc::client {
         auto header = reinterpret_cast<DataHeader*>(data_offset);
         header->magic = DataInHeaderMagic;
         header->version = 0; // context?
-        header->value = request_id;
+        header->value = static_cast<u32>(request_id);
         header->token = 0;
         data_offset += sizeof(DataHeader);
         ctx.in.data_offset = data_offset;
@@ -181,7 +175,7 @@ namespace bio::ipc::client {
 
         auto header = reinterpret_cast<DataHeader*>(data_offset);
         data_offset += sizeof(DataHeader);
-        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, result::ResultInvalidRequestCommandResponse);
+        BIO_RET_UNLESS(header->magic == DataOutHeaderMagic, cmif::result::ResultInvalidOutputHeader);
         BIO_RES_TRY(header->value);
 
         ctx.out.data_offset = data_offset;

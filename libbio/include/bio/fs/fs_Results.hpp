@@ -4,7 +4,7 @@
 
 namespace bio::fs::result {
 
-    BIO_RDEF_MODULE(6);
+    BIO_RDEF_MODULE(5);
 
     BIO_RDEF_DEFINE_RES(FspNotInitialized, 1);
     BIO_RDEF_DEFINE_RES(InvalidPath, 2);

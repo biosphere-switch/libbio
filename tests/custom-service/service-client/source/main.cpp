@@ -48,8 +48,12 @@ class BioDevService : public ipc::client::Service {
         }
 
     public:
-        inline Result Sample0(u32 &out_v) {
-            return this->session.SendRequestCommand<0>(ipc::client::Out<u32>(out_v));
+        inline Result SetValue32(u32 val) {
+            return this->session.SendRequestCommand<0>(ipc::client::In(val));
+        }
+
+        inline Result GetValue32(u32 &out_val) {
+            return this->session.SendRequestCommand<1>(ipc::client::Out(out_val));
         }
 
 };
@@ -57,13 +61,19 @@ class BioDevService : public ipc::client::Service {
 void Main() {
     BIO_DIAG_LOG("Main()");
 
-    mem::SharedObject<BioDevService> biodev;
-    BIO_DIAG_RES_ASSERT(service::CreateService(biodev));
+    mem::SharedObject<BioDevService> biodev_1;
+    BIO_DIAG_RES_ASSERT(service::CreateService(biodev_1));
+    
+    biodev_1->SetValue32(420);
+    mem::SharedObject<BioDevService> biodev_copy;
+    BIO_DIAG_RES_ASSERT(service::CloneService(biodev_1, biodev_copy));
+    BIO_DIAG_LOGF("Handle: 0x%X, Copy handle: 0x%X", biodev_1->GetSession().handle, biodev_copy->GetSession().handle);
 
     u32 val;
-    BIO_DIAG_RES_ASSERT(biodev->Sample0(val));
+    BIO_DIAG_RES_ASSERT(biodev_copy->GetValue32(val));
+    BIO_DIAG_LOGF("Value: %d", val);
+    BIO_DIAG_ASSERT(val == 420);
+    BIO_DIAG_ASSERT(biodev_1->GetSession().handle != biodev_copy->GetSession().handle);
 
-    BIO_DIAG_LOGF("Got value: %d", val);
-
-    BIO_DIAG_LOG("Done");
+    BIO_DIAG_LOG("Done - test succeeded!");
 }

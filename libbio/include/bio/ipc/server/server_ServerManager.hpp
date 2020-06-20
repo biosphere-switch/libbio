@@ -1,7 +1,6 @@
 
 #pragma once
 #include <bio/ipc/server/server_MitmQuery.hpp>
-#include <bio/ipc/server/server_Results.hpp>
 #include <bio/os/os_Wait.hpp>
 #include <bio/util/util_List.hpp>
 
@@ -17,12 +16,51 @@ namespace bio::ipc::server {
         WaitHandleType type;
     };
 
+    using NewServerFunction = Result(*)(Server*&);
+
+    using DeleteServerFunction = void(*)(Server*);
+
+    struct ServerContainer {
+        Server *server;
+        NewServerFunction new_fn;
+        DeleteServerFunction delete_fn;
+        WaitHandle handle;
+        u32 forward_handle;
+        bool is_mitm_service;
+        service::sm::ServiceName service_name;
+
+        inline constexpr bool IsMitmService() {
+            return this->is_mitm_service;
+        }
+
+        inline constexpr bool IsMitmSession() {
+            return this->forward_handle != InvalidHandle;
+        }
+
+        inline constexpr bool IsService() {
+            return this->service_name.value != service::sm::InvalidServiceName.value;
+        }
+
+        inline void Delete() {
+            this->delete_fn(this->server);
+            if(this->IsMitmService()) {
+                // TODO: uninstall mitm
+            }
+            else if(this->IsService()) {
+                // TODO: unregister service
+            }
+            else {
+                // Session handle, just close it
+                svc::CloseHandle(this->handle.handle);
+            }
+        }
+
+    };
+
     class ServerObject {
 
         private:
             using CallHandlerFunction = Result(*)(Server*, u32, CommandContext&);
-            using NewServerFunction = Result(*)(Server*&);
-            using DeleteServerFunction = void(*)(Server*);
 
             template<typename S>
             static inline Result CallHandler(Server *server, u32 request_id, CommandContext &ctx) {
@@ -30,16 +68,17 @@ namespace bio::ipc::server {
                 for(u32 i = 0; i < ServerCommandHandleCount<S>; i++) {
                     const auto &handler = handlers[i];
                     if(handler.request_id == request_id) {
-                        return (reinterpret_cast<S*>(server)->*handler.fn)(ctx);
+                        (reinterpret_cast<S*>(server)->*handler.fn)(ctx);
+                        return ResultSuccess;
                     }
                 }
-                return 0xF601; // TODO: proper result?
+                return cmif::result::ResultInvalidRequestId;
             }
 
-            template<typename S, typename ...SArgs>
-            static inline Result NewServer(Server *&out_server, SArgs &&...s_args) {
+            template<typename S>
+            static inline Result NewServer(Server *&out_server) {
                 S *server;
-                BIO_RES_TRY(mem::New(server, s_args...));
+                BIO_RES_TRY(mem::New(server));
 
                 out_server = reinterpret_cast<Server*>(server);
                 return ResultSuccess;
@@ -52,53 +91,84 @@ namespace bio::ipc::server {
                 }
             }
 
-        private:
-            Server *server;
-            CallHandlerFunction handler_fn;
-            DeleteServerFunction delete_fn;
-            service::sm::ServiceName service_name;
-            bool is_mitm;
-            util::SizedArray<WaitHandle, 0x40> handles;
-            util::SizedArray<u32, 0x40> fwd_handles;
-
-            Result HandleRequestCommand(u32 request_id, CommandContext &ctx) {
-                return this->handler_fn(this->server, request_id, ctx);
+            Result AddSession(ServerContainer &base_server, Server *server, u32 session_handle, u32 forward_handle) {
+                ServerContainer new_server = {};
+                new_server.server = server;
+                new_server.new_fn = base_server.new_fn;
+                new_server.delete_fn = base_server.delete_fn;
+                new_server.is_mitm_service = false;
+                new_server.handle = { session_handle, WaitHandleType::Session };
+                new_server.service_name = service::sm::InvalidServiceName;
+                new_server.forward_handle = forward_handle;
+                this->servers.Push(new_server);
+                return ResultSuccess;
             }
+            
+            Result AddNewSession(ServerContainer &base_server, u32 session_handle, u32 forward_handle) {
+                Server *server;
+                BIO_RES_TRY(base_server.new_fn(server));
+                BIO_RES_TRY(this->AddSession(base_server, server, session_handle, forward_handle));
+                
+                return ResultSuccess;
+            }
+
+            // Control request implementations
+
+            Result CloneCurrentObjectImpl(ServerContainer &server, CommandContext &ctx, u32 &out_handle) {
+                u32 server_handle;
+                u32 client_handle;
+                BIO_RES_TRY(svc::CreateSession(server_handle, client_handle, false, 0));
+
+                u32 forward_handle = InvalidHandle;
+                if(server.IsMitmSession()) {
+                    client::Session cloned_session;
+                    auto forward_session = client::Session::CreateFromHandle(server.forward_handle);
+                    BIO_RES_TRY(forward_session.CloneCurrentObject(cloned_session));
+
+                    forward_handle = cloned_session.handle;
+                }
+                BIO_RES_TRY(this->AddSession(server, server.server, server_handle, forward_handle));
+                out_handle = client_handle;
+                return ResultSuccess;
+            }
+
+        private:
+            CallHandlerFunction handler_fn;
+            util::SizedArray<ServerContainer, os::MaxWaitObjectCount> servers;
 
         public:
             static constexpr i32 InvalidIndex = -1;
 
         public:
-            ServerObject(Server *server, u32 handle, WaitHandleType handle_type, bool is_mitm, service::sm::ServiceName name, CallHandlerFunction handler_fn, DeleteServerFunction delete_fn) : server(server), handler_fn(handler_fn), delete_fn(delete_fn), service_name(name), is_mitm(is_mitm) {
-                this->handles.Push({ handle, handle_type });
-                this->fwd_handles.Push(InvalidHandle);
+            ServerObject(CallHandlerFunction handler_fn, ServerContainer server) : handler_fn(handler_fn) {
+                this->servers.Push(server);
             }
 
             ~ServerObject() {
-                this->delete_fn(this->server);
-                this->server = nullptr;
-                // TODO: disposing, unregister service/uninstall mitm?
+                for(u32 i = 0; i < this->servers.GetSize(); i++) {
+                    auto &server = this->servers.GetAt(i);
+                    server.Delete();
+                }
+                this->servers.Clear();
             }
 
-            util::SizedArray<WaitHandle, 0x40> &GetHandles() {
-                return this->handles;
+            util::SizedArray<ServerContainer, os::MaxWaitObjectCount> &GetServers() {
+                return this->servers;
             }
 
-            Result ProcessSessionHandle(i32 index, WaitHandle &handle) {
+            Result ProcessSessionHandle(i32 index, ServerContainer &server) {
                 // AKA process a request from a session.
-                auto &fwd_handle = this->fwd_handles.GetAt(index);
-
                 i32 tmp_idx;
-                BIO_RES_TRY(svc::ReplyAndReceive(tmp_idx, &handle.handle, 1, InvalidHandle, svc::IndefiniteWait));
+                BIO_RES_TRY(svc::ReplyAndReceive(tmp_idx, &server.handle.handle, 1, InvalidHandle, svc::IndefiniteWait));
 
                 u8 ipc_buf_backup[0x100];
-                if(this->is_mitm) {
+                if(server.IsMitmSession()) {
                     auto ipc_buf = GetIpcBuffer();
                     mem::Copy(ipc_buf_backup, ipc_buf, sizeof(ipc_buf_backup));
                 }
 
                 auto should_close_session = false;
-                ipc::SessionBase base(handle.handle);
+                ipc::SessionBase base(server.handle.handle);
 
                 ipc::CommandContext ctx(base);
                 auto type = ipc::CommandType::Invalid;
@@ -106,78 +176,101 @@ namespace bio::ipc::server {
 
                 switch(type) {
                     case ipc::CommandType::Request: {
-                        auto do_response = true;
+                        auto write_err_response = true;
                         u32 rq_id;
                         auto rc = ReadRequestCommandFromIpcBuffer(ctx, rq_id);
                         if(rc.IsSuccess()) {
-                            auto rc = this->HandleRequestCommand(rq_id, ctx);
-                            if(this->is_mitm) {
-                                if((rc == 0xF601) || (rc == service::sm::result::ResultAtmosphereMitmShouldForwardToSession)) {
-                                    // Copy back temp TLS, and let the original session take care of the command
-                                    auto ipc_buf = GetIpcBuffer();
-                                    mem::Copy(ipc_buf, ipc_buf_backup, sizeof(ipc_buf_backup));
-                                    BIO_RES_TRY(svc::SendSyncRequest(fwd_handle));
-                                    do_response = false;
+                            write_err_response = false;
+                            auto rc = this->handler_fn(server.server, rq_id, ctx);
+                            if(rc.IsFailure()) {
+                                write_err_response = true;
+                                if(server.IsMitmSession()) {
+                                    if((rc == cmif::result::ResultInvalidRequestId) || (rc == service::sm::result::ResultAtmosphereMitmShouldForwardToSession)) {
+                                        // Copy back temp TLS, and let the original session take care of the command (if we weren't implementing it or explicitly asked for it to be forwarded)
+                                        auto ipc_buf = GetIpcBuffer();
+                                        mem::Copy(ipc_buf, ipc_buf_backup, sizeof(ipc_buf_backup));
+                                        BIO_RES_TRY(svc::SendSyncRequest(server.forward_handle));
+                                        write_err_response = false;
+                                    }
                                 }
                             }
                         }
-                        if(do_response) {
+                        if(write_err_response) {
+                            // An error happened when running the request command - respond with it.
                             WriteRequestCommandResponseOnIpcBuffer(ctx, rc);
                         }
                         break;
                     }
                     case ipc::CommandType::Close: {
                         should_close_session = true;
-                        WriteCommandResponseOnIpcBuffer(ctx, CommandType::Close, 0);
+                        WriteCloseCommandResponseOnIpcBuffer(ctx);
+                        break;
+                    }
+                    case ipc::CommandType::Control: {
+                        u32 rq_id;
+                        auto rc = ReadControlCommandFromIpcBuffer(ctx, rq_id);
+                        if(rc.IsSuccess()) {
+                            switch(static_cast<ControlRequestId>(rq_id)) {
+                                case ControlRequestId::CloneCurrentObject:
+                                case ControlRequestId::CloneCurrentObjectEx: {
+                                    // Note: the *Ex command just sends an unused u32 in raw data, so we'll ignore it.
+                                    u32 cloned_handle;
+                                    rc = this->CloneCurrentObjectImpl(server, ctx, cloned_handle);
+                                    Server::RequestCommandEnd(ctx, rc, OutHandle<HandleMode::Move>(cloned_handle));
+                                    break;
+                                }
+                                default: {
+                                    rc = cmif::result::ResultInvalidRequestId;
+                                    break;
+                                }
+                            }
+                        }
+                        WriteControlCommandResponseOnIpcBuffer(ctx, rc);
                         break;
                     }
                     default: {
-                        WriteRequestCommandResponseOnIpcBuffer(ctx, 0xAAAA);
-                        break;
+                        // TODO: is this a proper result to return?
+                        WriteCommandResponseOnIpcBuffer(ctx, CommandType::Invalid, cmif::result::ResultInvalidInputHeader);
                     }
                 }
 
-                BIO_RES_TRY_EXCEPT(svc::ReplyAndReceive(tmp_idx, &handle.handle, 0, handle.handle, 0), os::result::ResultTimeOut);
+                BIO_RES_TRY_EXCEPT(svc::ReplyAndReceive(tmp_idx, &server.handle.handle, 0, server.handle.handle, 0), os::result::ResultTimeOut);
 
                 if(should_close_session) {
-                    svc::CloseHandle(handle.handle);
-                    this->handles.PopAt(index);
+                    server.Delete();
+                    this->servers.PopAt(index);
                 }
 
                 return ResultSuccess;
             }
 
-            Result ProcessServerHandle(i32 index, WaitHandle &handle) {
+            Result ProcessServerHandle(i32 index, ServerContainer &server) {
                 // AKA add/accept connection with a new session.
+                u32 new_handle;
+                BIO_RES_TRY(svc::AcceptSession(new_handle, server.handle.handle));
 
-                u32 new_handle = 0;
-                BIO_RES_TRY(svc::AcceptSession(new_handle, handle.handle));
-
-                if(this->handles.IsFull()) {
+                if(this->servers.IsFull()) {
                     svc::CloseHandle(new_handle);
-                    return result::ResultHandleTableFull;
+                    return hipc::result::ResultOutOfServerSessionMemory;
                 }
 
-                this->handles.Push({ new_handle, WaitHandleType::Session });
-
                 u32 fwd_handle = InvalidHandle;
-                if(this->is_mitm) {
+                if(server.IsMitmService()) {
                     service::sm::MitmProcessInfo info;
 
                     service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
                     BIO_RES_TRY(sm);
-                    BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereAcknowledgeMitmSession(this->service_name, info, fwd_handle));
+                    BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereAcknowledgeMitmSession(server.service_name, info, fwd_handle));
                 }
-
-                this->fwd_handles.Push(fwd_handle);
+                BIO_RES_TRY(this->AddNewSession(server, new_handle, fwd_handle));
 
                 return ResultSuccess;
             }
 
             i32 GetHandleIndex(u32 handle) {
-                for(u32 i = 0; i < this->handles.GetSize(); i++) {
-                    auto &this_handle = this->handles.GetAt(i);
-                    if(handle == this_handle.handle) {
+                for(u32 i = 0; i < this->servers.GetSize(); i++) {
+                    auto &server = this->servers.GetAt(i);
+                    if(handle == server.handle.handle) {
                         return i;
                     }
                 }
@@ -185,121 +278,170 @@ namespace bio::ipc::server {
             }
 
             Result ProcessSignaledHandle(u32 index) {
-                auto &handle = this->handles.GetAt(index);
-                switch(handle.type) {
+                auto &server = this->servers.GetAt(index);
+                switch(server.handle.type) {
                     case WaitHandleType::Server: {
-                        BIO_RES_TRY(this->ProcessServerHandle(index, handle));
+                        BIO_RES_TRY(this->ProcessServerHandle(index, server));
                         break;
                     }
                     case WaitHandleType::Session: {
-                        BIO_RES_TRY(this->ProcessSessionHandle(index, handle));
+                        BIO_RES_TRY(this->ProcessSessionHandle(index, server));
                         break;
                     }
                 }
 
                 return ResultSuccess;
             }
-
-            template<typename S, typename ...SArgs>
-            static inline Result Create(ServerObject *&out_obj, u32 handle, WaitHandleType handle_type, bool is_mitm, service::sm::ServiceName name, SArgs &&...s_args) {
+            
+            template<typename S>
+            static inline Result CreateSession(ServerContainer &out_server, u32 session_handle) {
                 Server *server;
-                BIO_RES_TRY(NewServer<S>(server, s_args...));
+                BIO_RES_TRY(NewServer<S>(server));
 
-                BIO_RES_TRY(mem::New(out_obj, server, handle, handle_type, is_mitm, name, &CallHandler<S>, &DeleteServer<S>));
+                out_server.server = server;
+                out_server.new_fn = &NewServer<S>;
+                out_server.delete_fn = &DeleteServer<S>;
+                out_server.handle = { session_handle, WaitHandleType::Session };
+                out_server.forward_handle = InvalidHandle;
+                out_server.is_mitm_service = false;
+                out_server.service_name = service::sm::InvalidServiceName;
+                return ResultSuccess;
+            }
+
+            template<typename S>
+            static inline Result CreateServer(ServerContainer &out_server, u32 port_handle, service::sm::ServiceName service_name, bool is_mitm_service) {
+                Server *server;
+                BIO_RES_TRY(NewServer<S>(server));
+
+                out_server.server = server;
+                out_server.new_fn = &NewServer<S>;
+                out_server.delete_fn = &DeleteServer<S>;
+                out_server.handle = { port_handle, WaitHandleType::Server };
+                out_server.forward_handle = InvalidHandle;
+                out_server.is_mitm_service = is_mitm_service;
+                out_server.service_name = service_name;
+                return ResultSuccess;
+            }
+
+            template<typename S>
+            static inline Result Create(ServerObject *&out_obj, ServerContainer server) {
+                BIO_RES_TRY(mem::New(out_obj, &CallHandler<S>, server));
 
                 return ResultSuccess;
             }
 
     };
 
+    class ServerManager;
+
+    ServerManager &GetMitmQueryManager();
+    Result EnsureMitmQueryThreadLaunched();
+
     class ServerManager {
 
         private:
-            util::LinkedList<ServerObject*> servers;
+            util::LinkedList<ServerObject*> server_objects;
             util::SizedArray<u32, os::MaxWaitObjectCount> wait_handles;
             util::LinkedList<os::Thread> process_threads;
 
-            static Result RegisterMitmQuerySession(u32 mitm_query_handle, ShouldMitmFunction fn);
+            template<ShouldMitmFunction ShouldMitmFn>
+            Result RegisterMitmQuerySession(u32 mitm_query_handle) {
+                auto &manager = GetMitmQueryManager();
+                BIO_RES_TRY(manager.RegisterSession<MitmQueryServer<ShouldMitmFn>>(mitm_query_handle));
+                BIO_RES_TRY(EnsureMitmQueryThreadLaunched());
+
+                return ResultSuccess;
+            }
 
             void PrepareWaitHandles() {
                 this->wait_handles.Clear();
-                for(u32 i = 0; i < this->servers.GetSize(); i++) {
-                    auto &server = this->servers.GetAt(i);
-                    auto &server_handles = server->GetHandles();
-                    for(u32 j = 0; j < server_handles.GetSize(); j++) {
-                        auto &server_handle = server_handles.GetAt(j);
-                        if(server_handle.handle != InvalidHandle) {
-                            this->wait_handles.Push(server_handle.handle);
+                for(u32 i = 0; i < this->server_objects.GetSize(); i++) {
+                    auto &server_object = this->server_objects.GetAt(i);
+                    auto &servers = server_object->GetServers();
+                    for(u32 j = 0; j < servers.GetSize(); j++) {
+                        auto &server = servers.GetAt(j);
+                        if(server.handle.handle != InvalidHandle) {
+                            this->wait_handles.Push(server.handle.handle);
                         }
                     }
                 }
             }
 
         public:
-            template<typename S, typename ...SArgs>
-            Result RegisterObject(u32 handle, WaitHandleType handle_type, bool is_mitm, service::sm::ServiceName name, SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterServerContainer(ServerContainer &server) {
                 static_assert(IsServer<S>, "Must be a Server type");
 
-                ServerObject *obj;
-                BIO_RES_TRY(ServerObject::Create<S>(obj, handle, handle_type, is_mitm, name, s_args...));
-                BIO_RES_TRY(this->servers.PushBack(obj));
+                ServerObject *server_object;
+                BIO_RES_TRY(ServerObject::Create<S>(server_object, server));
+                BIO_RES_TRY(this->server_objects.PushBack(server_object));
+
                 return ResultSuccess;
             }
 
-            template<typename S, typename ...SArgs>
-            Result RegisterServer(u32 handle, SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterServer(u32 port_handle, service::sm::ServiceName service_name, bool is_mitm_service) {
                 static_assert(IsServer<S>, "Must be a Server type");
 
-                return this->RegisterObject<S>(handle, WaitHandleType::Server, false, service::sm::InvalidServiceName, s_args...);
+                ServerContainer server;
+                BIO_RES_TRY(ServerObject::CreateServer<S>(server, port_handle, service_name, is_mitm_service));
+                BIO_RES_TRY(this->RegisterServerContainer<S>(server));
+
+                return ResultSuccess;
             }
 
-            template<typename S, typename ...SArgs>
-            Result RegisterSession(u32 handle, SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterSession(u32 session_handle) {
                 static_assert(IsServer<S>, "Must be a Server type");
 
-                return this->RegisterObject<S>(handle, WaitHandleType::Session, false, service::sm::InvalidServiceName, s_args...);
+                ServerContainer server;
+                BIO_RES_TRY(ServerObject::CreateSession<S>(server, session_handle));
+                BIO_RES_TRY(this->RegisterServerContainer<S>(server));
+
+                return ResultSuccess;
             }
 
-            template<typename S, typename ...SArgs>
-            Result RegisterServiceServer(SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterServiceServer() {
                 static_assert(IsService<S>, "Must be a Service type");
 
                 const auto name = service::sm::ServiceName::Encode(S::GetName());
-                u32 handle;
+                u32 port_handle;
+
                 service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
                 BIO_RES_TRY(sm);
-                BIO_RES_TRY(service::sm::UserNamedPortSession->RegisterService(name, false, S::GetMaxSessions(), handle));
+                BIO_RES_TRY(service::sm::UserNamedPortSession->RegisterService(name, false, S::GetMaxSessions(), port_handle));
 
-                BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, false, name, s_args...));
+                BIO_RES_TRY(this->RegisterServer<S>(port_handle, name, false));
                 
                 return ResultSuccess;
             }
 
-            template<typename S, typename ...SArgs>
-            Result RegisterMitmServiceServer(SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterMitmServiceServer() {
                 static_assert(IsMitmService<S>, "Must be a MitmService type");
 
                 const auto name = service::sm::ServiceName::Encode(S::GetName());
-                u32 handle;
+                u32 port_handle;
                 u32 mitm_query_handle;
+                
                 service::ScopedSessionGuard sm(service::sm::UserNamedPortSession);
                 BIO_RES_TRY(sm);
-                BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, handle, mitm_query_handle));
+                BIO_RES_TRY(service::sm::UserNamedPortSession->AtmosphereInstallMitm(name, port_handle, mitm_query_handle));
 
-                // TODO: currently the ShouldMitm interface causes a deadlock - figure out why and get mitm working
-                BIO_RES_TRY(this->RegisterMitmQuerySession(mitm_query_handle, &S::ShouldMitm));
-                BIO_RES_TRY(this->RegisterObject<S>(handle, WaitHandleType::Server, true, name, s_args...));
+                BIO_RES_TRY(this->RegisterMitmQuerySession<&S::ShouldMitm>(mitm_query_handle));
+                BIO_RES_TRY(this->RegisterServer<S>(port_handle, name, true));
 
                 return ResultSuccess;
             }
 
-            template<typename S, typename ...SArgs>
-            Result RegisterNamedPortServer(SArgs &&...s_args) {
+            template<typename S>
+            Result RegisterNamedPortServer() {
                 static_assert(IsNamedPort<S>, "Must be a NamedPort type");
 
-                u32 handle;
-                BIO_RES_TRY(svc::ManageNamedPort(handle, S::GetPortName(), S::GetMaxSessions()));
-                BIO_RES_TRY(this->RegisterServer<S>(handle, s_args...));
+                u32 port_handle;
+                BIO_RES_TRY(svc::ManageNamedPort(port_handle, S::GetPortName(), S::GetMaxSessions()));
+                BIO_RES_TRY(this->RegisterServer<S>(port_handle, service::sm::InvalidServiceName, false));
 
                 return ResultSuccess;
             }
@@ -313,14 +455,13 @@ namespace bio::ipc::server {
                 if((out_idx >= 0) && (out_idx < this->wait_handles.GetSize())) {
                     auto &signaled_handle = this->wait_handles.GetAt(out_idx);
 
-                    ServerObject *server;
-                    auto it = this->servers.Iterate();
-                    while(it.GetNext(server)) {
-                        auto idx = server->GetHandleIndex(signaled_handle);
+                    ServerObject *server_object;
+                    auto it = this->server_objects.Iterate();
+                    while(it.GetNext(server_object)) {
+                        auto idx = server_object->GetHandleIndex(signaled_handle);
                         if(idx != ServerObject::InvalidIndex) {
-                            // The handle belongs to the server object.
-                            auto rc = server->ProcessSignaledHandle(idx);
-                            // TODO: handle result
+                            // The handle belongs to a server from the server object.
+                            BIO_RES_TRY(server_object->ProcessSignaledHandle(idx));
                             break;
                         }
                     }
@@ -335,6 +476,7 @@ namespace bio::ipc::server {
                     if(rc == os::result::ResultOperationCancelled) {
                         break;
                     }
+                    // TODO: any other result we should check?
                 }
             }
 

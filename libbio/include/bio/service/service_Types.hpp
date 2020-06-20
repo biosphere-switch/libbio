@@ -12,6 +12,16 @@ namespace bio::service {
     }
 
     template<typename S>
+    inline Result CloneService(mem::SharedObject<S> &srv, mem::SharedObject<S> &out_cloned_srv) {
+        static_assert(ipc::client::IsValidSessionType<S>);
+        ipc::client::Session cloned_session;
+        BIO_RES_TRY(srv->GetSession().CloneCurrentObject(cloned_session));
+        BIO_RES_TRY(mem::NewShared(out_cloned_srv, cloned_session));
+
+        return ResultSuccess;
+    }
+
+    template<typename S>
     class ServiceGuard {
 
         private:

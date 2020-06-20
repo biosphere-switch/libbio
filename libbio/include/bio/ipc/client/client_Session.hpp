@@ -46,7 +46,7 @@ namespace bio::ipc::client {
             return ResultSuccess;
         }
 
-        template<u32 RequestId, typename ...Args>
+        template<ControlRequestId RequestId, typename ...Args>
         inline Result SendControlCommand(Args &&...args) {
             CommandContext ctx(this->GetBase());
 
@@ -71,8 +71,16 @@ namespace bio::ipc::client {
             return static_cast<SessionBase&>(*this);
         }
 
-        inline Result ConvertToDomain() {
-            return this->SendControlCommand<0>(Out<u32>(this->object_id));
+        inline Result ConvertCurrentObjectToDomain() {
+            return this->SendControlCommand<ControlRequestId::ConvertCurrentObjectToDomain>(Out<u32>(this->object_id));
+        }
+
+        inline Result CloneCurrentObject(Session &out_clone_session) {
+            u32 cloned_handle;
+            BIO_RES_TRY(this->SendControlCommand<ControlRequestId::CloneCurrentObject>(OutHandle<HandleMode::Move, 0>(cloned_handle)));
+
+            out_clone_session = Session::CreateFromHandle(cloned_handle);
+            return ResultSuccess;
         }
 
         inline void SetPointerBufferSize() {
@@ -80,7 +88,7 @@ namespace bio::ipc::client {
         }
 
         inline Result QueryPointerBufferSize(u16 &out_size) {
-            return this->SendControlCommand<3>(Out<u16>(out_size));
+            return this->SendControlCommand<ControlRequestId::QueryPointerBufferSize>(Out<u16>(out_size));
         }
 
         inline void Close() {
