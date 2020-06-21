@@ -46,7 +46,7 @@ Submodules:
 
   - More new examples
 
-- Fully Implement serverside IPC: command arguments (buffers, objects), mitm support (currently broken), domain support...
+- Fully Implement serverside IPC: buffers, sessions/objects, domains, command arguments
 
 - Fully implement CRT0 initialization:
 

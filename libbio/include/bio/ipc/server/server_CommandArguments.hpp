@@ -75,7 +75,7 @@ namespace bio::ipc::server {
                 case CommandState::BeforeHeaderInitialization: {
                     if(this->session.IsValid()) {
                         if(this->session.IsDomain()) {
-                            ctx.AddInObject(this->session.GetObjectId());
+                            ctx.PushInObject(this->session.GetObjectId());
                         }
                     }
                     break;
@@ -162,11 +162,11 @@ namespace bio::ipc::server {
                 case CommandState::BeforeResponseWrite: {
                     switch(Mode) {
                         case HandleMode::Copy: {
-                            ctx.out.copy_handles.Push(this->handle);
+                            ctx.out.copy_handles.PushBack(this->handle);
                             break;
                         }
                         case HandleMode::Move: {
-                            ctx.out.move_handles.Push(this->handle);
+                            ctx.out.move_handles.PushBack(this->handle);
                             break;
                         }
                     }

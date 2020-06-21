@@ -140,7 +140,7 @@ DEF_SVC _ZN3bio3svc11CloseHandleEj
 	ret
 END_DEF_SVC
 
-DEF_SVC svcResetSignal
+DEF_SVC _ZN3bio3svc11ResetSignalEj
 	svc 0x17
 	ret
 END_DEF_SVC

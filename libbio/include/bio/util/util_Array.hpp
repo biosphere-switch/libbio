@@ -46,10 +46,16 @@ namespace bio::util {
         }
 
         inline constexpr void PopAt(u32 index) {
-            this->size--;
-            for(u32 i = index; i < this->size; i++) {
-                this->array[i] = this->array[i + 1];
+            if(this->size > 0) {
+                this->size--;
+                for(u32 i = index; i < this->size; i++) {
+                    this->array[i] = this->array[i + 1];
+                }
             }
+        }
+
+        inline constexpr void PopFront() {
+            this->PopAt(0);
         }
 
         inline constexpr bool IsEmpty() {

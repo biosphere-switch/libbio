@@ -91,6 +91,7 @@ namespace bio::svc {
     Result UnmapSharedMemory(u32 handle, void *address, u64 size); // 0x14
     Result CreateTransferMemory(Handle &out_handle, void *address, u64 size, MemoryPermission permission); // 0x15
     Result CloseHandle(Handle handle); // 0x16
+    Result ResetSignal(Handle handle); // 0x17
     Result WaitSynchronization(i32 &out_index, const u32 *handles, i32 handle_count, i64 timeout_ns); // 0x18
     Result ArbitrateLock(u32 wait_tag, u32 *tag_location, u32 self_tag); // 0x1A
     Result ArbitrateUnlock(u32 *tag_location); // 0x1B

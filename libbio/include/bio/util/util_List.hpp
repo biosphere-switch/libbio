@@ -193,6 +193,14 @@ namespace bio::util {
                 }
             }
 
+            inline void PopFront() {
+                auto at_idx = this->head;
+                auto node = at_idx->PopSelf();
+                if(node != nullptr) {
+                    mem::Delete(node);
+                }
+            }
+
             inline constexpr T &GetAt(u32 index) {
                 auto at_idx = this->GetNodeAtIndex(index);
                 return at_idx->value;
@@ -215,7 +223,7 @@ namespace bio::util {
             }
 
             inline constexpr T &Front() {
-                return head->value;
+                return this->head->value;
             }
 
             inline constexpr T &Back() {

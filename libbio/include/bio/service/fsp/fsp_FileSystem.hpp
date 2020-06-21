@@ -36,11 +36,11 @@ namespace bio::service::fsp {
             }
             
             inline Result OpenFile(char *path, u64 path_len, FileOpenMode mode, mem::SharedObject<File> &out_file) {
-                return this->session.SendRequestCommand<8>(ipc::client::In<FileOpenMode>(mode), ipc::client::Buffer(path, path_len, ipc::BufferAttribute::In | ipc::BufferAttribute::Pointer), ipc::client::OutSessionObject<0, File>(out_file));
+                return this->session.SendRequestCommand<8>(ipc::client::In<FileOpenMode>(mode), ipc::client::Buffer(path, path_len, ipc::BufferAttribute::In | ipc::BufferAttribute::Pointer), ipc::client::OutSessionObject(out_file));
             }
 
             inline Result OpenDirectory(char *path, u64 path_len, DirectoryOpenMode mode, mem::SharedObject<Directory> &out_directory) {
-                return this->session.SendRequestCommand<9>(ipc::client::In<DirectoryOpenMode>(mode), ipc::client::Buffer(path, path_len, ipc::BufferAttribute::In | ipc::BufferAttribute::Pointer), ipc::client::OutSessionObject<0, Directory>(out_directory));
+                return this->session.SendRequestCommand<9>(ipc::client::In<DirectoryOpenMode>(mode), ipc::client::Buffer(path, path_len, ipc::BufferAttribute::In | ipc::BufferAttribute::Pointer), ipc::client::OutSessionObject(out_directory));
             }
 
     };

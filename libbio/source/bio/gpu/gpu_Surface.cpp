@@ -43,6 +43,7 @@ namespace bio::gpu {
         BIO_RES_TRY(Ioctl(get_id));
 
         BIO_RES_TRY(mem::Allocate<mem::PageAlignment>(buf_size, this->buffer_data));
+        BIO_RES_TRY(svc::SetMemoryAttribute(this->buffer_data, buf_size, 8, svc::MemoryAttribute::Uncached));
 
         ioctl::nvmap::Alloc alloc = {};
         alloc.handle = create.handle;

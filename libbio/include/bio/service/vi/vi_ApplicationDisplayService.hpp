@@ -13,15 +13,15 @@ namespace bio::service::vi {
 
         public:
             inline Result GetRelayService(mem::SharedObject<dispdrv::HOSBinderDriver> &out_service) {
-                return this->session.SendRequestCommand<100>(ipc::client::OutSessionObject<0, dispdrv::HOSBinderDriver>(out_service));
+                return this->session.SendRequestCommand<100>(ipc::client::OutSessionObject(out_service));
             }
 
             inline Result GetSystemDisplayService(mem::SharedObject<SystemDisplayService> &out_service) {
-                return this->session.SendRequestCommand<101>(ipc::client::OutSessionObject<0, SystemDisplayService>(out_service));
+                return this->session.SendRequestCommand<101>(ipc::client::OutSessionObject(out_service));
             }
 
             inline Result GetManagerDisplayService(mem::SharedObject<ManagerDisplayService> &out_service) {
-                return this->session.SendRequestCommand<102>(ipc::client::OutSessionObject<0, ManagerDisplayService>(out_service));
+                return this->session.SendRequestCommand<102>(ipc::client::OutSessionObject(out_service));
             }
 
             inline Result OpenDisplay(DisplayName name, u64 &out_display_id) {
@@ -45,7 +45,7 @@ namespace bio::service::vi {
             }
 
             inline Result GetDisplayVsyncEvent(u64 display_id, u32 &out_event_handle) {
-                return this->session.SendRequestCommand<5202>(ipc::client::In<u64>(display_id), ipc::client::OutHandle<ipc::HandleMode::Copy, 0>(out_event_handle));
+                return this->session.SendRequestCommand<5202>(ipc::client::In<u64>(display_id), ipc::client::OutHandle<ipc::HandleMode::Copy>(out_event_handle));
             }
 
     };

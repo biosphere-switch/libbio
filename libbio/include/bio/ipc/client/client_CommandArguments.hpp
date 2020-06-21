@@ -79,29 +79,6 @@ namespace bio::ipc::client {
 
     };
 
-    struct InSession : public CommandArgument {
-        SessionBase session;
-
-        constexpr InSession(SessionBase session) : session(session) {}
-
-        inline constexpr void Process(CommandContext &ctx, CommandState state) {
-            switch(state)
-            {
-                case CommandState::BeforeHeaderInitialization: {
-                    if(this->session.IsValid()) {
-                        if(this->session.IsDomain()) {
-                            ctx.AddInObject(this->session.GetObjectId());
-                        }
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-
-    };
-
     struct Buffer : public CommandArgument {
         void *buf;
         u64 buf_size;
@@ -171,7 +148,7 @@ namespace bio::ipc::client {
 
     };
 
-    template<HandleMode Mode, u32 Index>
+    template<HandleMode Mode>
     struct OutHandle : public CommandArgument {
         u32 &handle;
 
@@ -180,7 +157,7 @@ namespace bio::ipc::client {
         inline constexpr void Process(CommandContext &ctx, CommandState state) {
             switch(state) {
                 case CommandState::AfterResponseParse: {
-                    ctx.GetOutHandle<Mode, Index>(this->handle);
+                    this->handle = ctx.PopOutHandle<Mode>();
                     break;
                 }
                 default:
@@ -189,35 +166,5 @@ namespace bio::ipc::client {
         }
 
     };
-
-    /*
-    template<u32 OIndex, bool AutoClear>
-    class OutEvent : public CommandArgument
-    {
-        public:
-            OutEvent(std::shared_ptr<os::Event> &out_ev) : event(out_ev), idx(OIndex), auto_cl(AutoClear)
-            {
-            }
-
-            virtual void Process(RequestData &data, u8 part) override
-            {
-                switch(part)
-                {
-                    case 4:
-                        if(idx < data.out_hs_size)
-                        {
-                            u32 handle = data.out_hs[idx];
-                            event = std::move(os::Event::Open(handle, auto_cl));
-                        }
-                        break;
-                }
-            }
-
-        private:
-            u32 idx;
-            bool auto_cl;
-            std::shared_ptr<os::Event> &event;
-    };
-    */
 
 }

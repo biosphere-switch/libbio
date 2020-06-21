@@ -2,7 +2,7 @@
 #pragma once
 #include <bio/os/os_Tls.hpp>
 #include <bio/ipc/ipc_Results.hpp>
-#include <bio/util/util_Array.hpp>
+#include <bio/util/util_List.hpp>
 #include <bio/util/util_Templates.hpp>
 #include <bio/util/util_Offset.hpp>
 
@@ -230,10 +230,10 @@ namespace bio::ipc {
         u8 *data_offset;
         u8 *data_words_offset;
         u8 *objects_offset;
-        util::SizedArray<u32, MaxHandleCount> copy_handles;
-        util::SizedArray<u32, MaxHandleCount> move_handles;
-        util::SizedArray<u32, MaxObjectIdCount> objects;
-        util::SizedArray<u16, MaxBufferCount> out_pointer_sizes;
+        util::LinkedList<u32> copy_handles;
+        util::LinkedList<u32> move_handles;
+        util::LinkedList<u32> objects;
+        util::LinkedList<u16> out_pointer_sizes;
     };
 
     struct CommandOutParameters {
@@ -242,9 +242,9 @@ namespace bio::ipc {
         u32 data_size;
         u8 *data_offset;
         u8 *data_words_offset;
-        util::SizedArray<u32, MaxHandleCount> copy_handles;
-        util::SizedArray<u32, MaxHandleCount> move_handles;
-        util::SizedArray<u32, MaxObjectIdCount> objects;
+        util::LinkedList<u32> copy_handles;
+        util::LinkedList<u32> move_handles;
+        util::LinkedList<u32> objects;
     };
 
     constexpr u32 NoOutProcessId = -1;
@@ -253,11 +253,11 @@ namespace bio::ipc {
         SessionBase session_copy;
         CommandInParameters in;
         CommandOutParameters out;
-        util::SizedArray<SendStaticDescriptor, MaxBufferCount> send_statics;
-        util::SizedArray<ReceiveStaticDescriptor, MaxBufferCount> receive_statics;
-        util::SizedArray<BufferDescriptor, MaxBufferCount> send_buffers;
-        util::SizedArray<BufferDescriptor, MaxBufferCount> receive_buffers;
-        util::SizedArray<BufferDescriptor, MaxBufferCount> exchange_buffers;
+        util::LinkedList<SendStaticDescriptor> send_statics;
+        util::LinkedList<ReceiveStaticDescriptor> receive_statics;
+        util::LinkedList<BufferDescriptor> send_buffers;
+        util::LinkedList<BufferDescriptor> receive_buffers;
+        util::LinkedList<BufferDescriptor> exchange_buffers;
 
         CommandContext(SessionBase session) : session_copy(session), in(), out(), send_statics(), receive_statics(), send_buffers(), receive_buffers(), exchange_buffers() {}
 
@@ -265,18 +265,18 @@ namespace bio::ipc {
         inline constexpr void AddInHandle(u32 handle) {
             switch(Mode) {
                 case HandleMode::Copy: {
-                    this->in.copy_handles.Push(handle);
+                    this->in.copy_handles.PushBack(handle);
                     break;
                 }
                 case HandleMode::Move: {
-                    this->in.move_handles.Push(handle);
+                    this->in.move_handles.PushBack(handle);
                     break;
                 }
             }
         }
 
-        inline constexpr void AddInObject(u32 object_id) {
-            this->in.objects.Push(object_id);
+        inline constexpr void PushInObject(u32 object_id) {
+            this->in.objects.PushBack(object_id);
         }
 
         inline void AddBuffer(void *buf, u64 buf_size, BufferAttribute attr) {
@@ -284,49 +284,49 @@ namespace bio::ipc {
             const bool is_out = static_cast<bool>(attr & BufferAttribute::Out);
             if(static_cast<bool>(attr & BufferAttribute::AutoSelect)) {
                 u16 ptr_buf_size = 0;
-                // TODO
+                // TODO: pointer buffer size
                 const bool buffer_in_static = (ptr_buf_size > 0) && (buf_size <= ptr_buf_size);
                 if(is_in) {
                     if(buffer_in_static) {
                         auto send_buf_desc = BufferDescriptor::Create(nullptr, 0, BufferMode::Normal);
-                        send_buffers.Push(send_buf_desc);
+                        send_buffers.PushBack(send_buf_desc);
                         auto send_static_desc = SendStaticDescriptor::Create(buf, buf_size, send_statics.GetSize());
-                        send_statics.Push(send_static_desc);
+                        send_statics.PushBack(send_static_desc);
                     }
                     else {
                         auto send_buf_desc = BufferDescriptor::Create(buf, buf_size, BufferMode::Normal);
-                        send_buffers.Push(send_buf_desc);
+                        send_buffers.PushBack(send_buf_desc);
                         auto send_static_desc = SendStaticDescriptor::Create(nullptr, 0, send_statics.GetSize());
-                        send_statics.Push(send_static_desc);
+                        send_statics.PushBack(send_static_desc);
                     }
                 }
                 else if(is_out) {
                     if(buffer_in_static) {
                         auto receive_buf_desc = BufferDescriptor::Create(nullptr, 0, BufferMode::Normal);
-                        receive_buffers.Push(receive_buf_desc);
+                        receive_buffers.PushBack(receive_buf_desc);
                         auto receive_static_desc = ReceiveStaticDescriptor::Create(buf, buf_size);
-                        receive_statics.Push(receive_static_desc);
-                        in.out_pointer_sizes.Push(static_cast<u16>(buf_size));
+                        receive_statics.PushBack(receive_static_desc);
+                        in.out_pointer_sizes.PushBack(static_cast<u16>(buf_size));
                     }
                     else {
                         auto receive_buf_desc = BufferDescriptor::Create(buf, buf_size, BufferMode::Normal);
-                        receive_buffers.Push(receive_buf_desc);
+                        receive_buffers.PushBack(receive_buf_desc);
                         auto receive_static_desc = ReceiveStaticDescriptor::Create(nullptr, 0);
-                        receive_statics.Push(receive_static_desc);
-                        in.out_pointer_sizes.Push(0);
+                        receive_statics.PushBack(receive_static_desc);
+                        in.out_pointer_sizes.PushBack(0);
                     }
                 }
             }
             else if(static_cast<bool>(attr & BufferAttribute::Pointer)) {
                 if(is_in) {
                     auto send_static_desc = SendStaticDescriptor::Create(buf, buf_size, send_statics.GetSize());
-                    send_statics.Push(send_static_desc);
+                    send_statics.PushBack(send_static_desc);
                 }
                 else if(is_out) {
                     auto receive_static_desc = ReceiveStaticDescriptor::Create(buf, buf_size);
-                    receive_statics.Push(receive_static_desc);
+                    receive_statics.PushBack(receive_static_desc);
                     if(!static_cast<bool>(attr & BufferAttribute::FixedSize)) {
-                        in.out_pointer_sizes.Push(static_cast<u16>(buf_size));
+                        in.out_pointer_sizes.PushBack(static_cast<u16>(buf_size));
                     }
                 }
             }
@@ -340,82 +340,60 @@ namespace bio::ipc {
                 }
                 auto buf_desc = BufferDescriptor::Create(buf, buf_size, mode);
                 if(is_in && is_out) {
-                    exchange_buffers.Push(buf_desc);
+                    exchange_buffers.PushBack(buf_desc);
                 }
                 else if(is_in) {
-                    send_buffers.Push(buf_desc);
+                    send_buffers.PushBack(buf_desc);
                 }
                 else if(is_out) {
-                    receive_buffers.Push(buf_desc);
+                    receive_buffers.PushBack(buf_desc);
                 }
             }
         };
 
-        template<HandleMode Mode, u32 Index>
-        inline constexpr bool HasOutHandle() {
+        template<HandleMode Mode>
+        inline constexpr u32 PopOutHandle() {
             switch(Mode) {
                 case HandleMode::Copy: {
-                    return this->out.copy_handles.HasAt(Index);
+                    auto handle = this->out.copy_handles.Front();
+                    this->out.copy_handles.PopFront();
+                    return handle;
                 }
                 case HandleMode::Move: {
-                    return this->out.move_handles.HasAt(Index);
+                    auto handle = this->out.move_handles.Front();
+                    this->out.move_handles.PopFront();
+                    return handle;
                 }
             }
         }
 
-        template<HandleMode Mode, u32 Index>
-        inline constexpr void GetOutHandle(u32 &out_handle) {
-            switch(Mode) {
-                case HandleMode::Copy: {
-                    if(this->out.copy_handles.HasAt(Index)) {
-                        out_handle = this->out.copy_handles.GetAt(Index);
-                    }
-                    break;
-                }
-                case HandleMode::Move: {
-                    if(this->out.move_handles.HasAt(Index)) {
-                        out_handle = this->out.move_handles.GetAt(Index);
-                    }
-                    break;
-                }
-            }
-        }
-
-        template<u32 Index>
-        inline constexpr bool HasOutObject() {
-            return this->out.objects.HasAt(Index);
-        }
-
-        template<u32 Index>
-        inline constexpr void GetOutObject(u32 &out_object_id) {
-            if(this->out.objects.HasAt(Index)) {
-                out_object_id = this->out.objects.GetAt(Index);
-            }
+        inline constexpr u32 PopOutObject() {
+            auto object = this->out.objects.Front();
+            this->out.objects.PopFront();
+            return object;
         }
 
     };
 
-    template<typename T, u64 N>
-    inline u8 *WriteSizedArrayToBuffer(u8 *buf, util::SizedArray<T, N> &array) {
+    template<typename T>
+    inline u8 *WriteSizedArrayToBuffer(u8 *buf, util::LinkedList<T> &array) {
         auto tmp_buf = buf;
-        if(!array.IsEmpty()) {
-            for(u32 i = 0; i < array.GetSize(); i++) {
-                *reinterpret_cast<T*>(tmp_buf) = array.GetAt(i);
-                tmp_buf += sizeof(T);
-            }
+        T tmp;
+        auto it = array.Iterate();
+        while(it.GetNext(tmp)) {
+            *reinterpret_cast<T*>(tmp_buf) = tmp;
+            tmp_buf += sizeof(T);
         }
         return tmp_buf;
     }
 
-    template<typename T, u64 N>
-    inline u8 *ReadSizedArrayFromBuffer(u8 *buf, u32 count, util::SizedArray<T, N> &array) {
+    template<typename T>
+    inline u8 *ReadSizedArrayFromBuffer(u8 *buf, u32 count, util::LinkedList<T> &array) {
         auto tmp_buf = buf;
         if(count > 0) {
-            auto array_max_size = static_cast<u32>(N);
-            auto min = util::Min(count, array_max_size);
             array.Clear();
-            for(u32 i = 0; i < min; i++) {
-                array.Push(*reinterpret_cast<T*>(tmp_buf));
+            for(u32 i = 0; i < count; i++) {
+                array.PushBack(*reinterpret_cast<T*>(tmp_buf));
                 tmp_buf += sizeof(T);
             }
         }

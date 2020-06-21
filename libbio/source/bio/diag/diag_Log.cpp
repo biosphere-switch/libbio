@@ -6,6 +6,7 @@
 #include <bio/crt0/crt0_Types.hpp>
 #include <bio/os/os_Tls.hpp>
 #include <bio/os/os_Mutex.hpp>
+#include <bio/arm/arm_Tick.hpp> 
 
 namespace bio::crt0 {
 
@@ -180,6 +181,11 @@ namespace bio::diag {
         head_packet->payload.function_name.Initialize(LogDataChunkKey::FunctionName, metadata.source_info.function_name, metadata.source_info.function_name_len);
         head_packet->payload.module_name.Initialize(LogDataChunkKey::ModuleName, crt0::g_ModuleName.name, crt0::g_ModuleName.length);
         head_packet->payload.thread_name.Initialize(LogDataChunkKey::ThreadName, cur_thr.GetName(), cur_thr.GetNameLength());
+
+        const auto ticks = arm::GetSystemTick();
+        const auto ns = arm::ConvertToNanoseconds(ticks);
+        const auto s = ns / 1'000'000'000;
+        head_packet->payload.user_system_clock.Initialize(LogDataChunkKey::UserSystemClock, s);
 
         auto remaining_len = metadata.text_log_len;
         auto cur_packet = head_packet;

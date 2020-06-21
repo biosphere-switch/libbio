@@ -11,7 +11,7 @@ namespace bio::service::hid {
 
         public:
             inline Result GetSharedMemoryHandle(u32 &out_handle) {
-                return this->session.SendRequestCommand<0>(ipc::client::OutHandle<ipc::HandleMode::Copy, 0>(out_handle));
+                return this->session.SendRequestCommand<0>(ipc::client::OutHandle<ipc::HandleMode::Copy>(out_handle));
             }
 
     };

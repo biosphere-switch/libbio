@@ -17,7 +17,7 @@ namespace bio::service::lm {
 
         public:
             inline Result OpenLogger(mem::SharedObject<Logger> &out_logger) {
-                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(), ipc::client::OutSessionObject<0, Logger>(out_logger));
+                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(), ipc::client::OutSessionObject(out_logger));
             }
 
     };

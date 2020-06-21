@@ -3,6 +3,7 @@
 #include <bio/gpu/gpu_Results.hpp>
 #include <bio/gpu/gpu_Binder.hpp>
 #include <bio/util/util_List.hpp>
+#include <bio/os/os_Wait.hpp>
 
 namespace bio::gpu {
 
@@ -65,16 +66,17 @@ namespace bio::gpu {
             }
 
             Result WaitForVsync() {
-                i32 idx;
-                BIO_RES_TRY(svc::WaitSynchronization(idx, &this->vsync_event_handle, 1, svc::IndefiniteWait));
+                i32 tmp_idx;
+                BIO_RES_TRY(os::WaitHandles(svc::IndefiniteWait, tmp_idx, this->vsync_event_handle));
                 
                 return ResultSuccess;
             }
 
             Result WaitForBuffer() {
-                i32 idx;
-                BIO_RES_TRY(svc::WaitSynchronization(idx, &this->buffer_event_handle, 1, svc::IndefiniteWait));
-                
+                i32 tmp_idx;
+                BIO_RES_TRY(os::WaitHandles(svc::IndefiniteWait, tmp_idx, this->buffer_event_handle));
+                BIO_RES_TRY(svc::ResetSignal(this->buffer_event_handle));
+
                 return ResultSuccess;
             }
 

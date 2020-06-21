@@ -18,7 +18,7 @@ namespace bio::service::vi {
         protected:
             template<u32 RequestId>
             inline Result GetDisplayServiceImpl(bool is_privileged, mem::SharedObject<ApplicationDisplayService> &out_service) {
-                return this->session.SendRequestCommand<RequestId>(ipc::client::In<u32>(static_cast<u32>(is_privileged)), ipc::client::OutSessionObject<0, ApplicationDisplayService>(out_service));
+                return this->session.SendRequestCommand<RequestId>(ipc::client::In<u32>(static_cast<u32>(is_privileged)), ipc::client::OutSessionObject(out_service));
             }
 
     };

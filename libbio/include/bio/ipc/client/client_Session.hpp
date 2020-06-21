@@ -77,7 +77,7 @@ namespace bio::ipc::client {
 
         inline Result CloneCurrentObject(Session &out_clone_session) {
             u32 cloned_handle;
-            BIO_RES_TRY(this->SendControlCommand<ControlRequestId::CloneCurrentObject>(OutHandle<HandleMode::Move, 0>(cloned_handle)));
+            BIO_RES_TRY(this->SendControlCommand<ControlRequestId::CloneCurrentObject>(OutHandle<HandleMode::Move>(cloned_handle)));
 
             out_clone_session = Session::CreateFromHandle(cloned_handle);
             return ResultSuccess;

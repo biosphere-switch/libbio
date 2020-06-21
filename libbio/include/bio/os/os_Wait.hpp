@@ -44,6 +44,17 @@ namespace bio::os {
         return ResultSuccess;
     }
 
+    template<typename ...Handles>
+    Result WaitHandles(i64 timeout, i32 &out_index, Handles &&...handles) {
+        static_assert(sizeof...(Handles) <= MaxWaitObjectCount);
+
+        util::SizedArray<u32, MaxWaitObjectCount> handle_array;
+        (handle_array.Push(handles), ...);
+        BIO_RES_TRY(WaitHandlesAny(handle_array, timeout, out_index));
+
+        return ResultSuccess;
+    }
+
     // TODO: WaitHandles (like above, with a template parameter pack)
 
 }

@@ -18,7 +18,7 @@ namespace bio::service::hid {
 
         public:
             inline Result CreateAppletResource(u64 aruid, mem::SharedObject<AppletResource> &out_applet_res) {
-                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(aruid), ipc::client::OutSessionObject<0, AppletResource>(out_applet_res));
+                return this->session.SendRequestCommand<0>(ipc::client::InProcessId(aruid), ipc::client::OutSessionObject(out_applet_res));
             }
 
             inline Result SetSupportedNpadStyleSet(u64 aruid, NpadStyleTag npad_style_tag) {

@@ -25,7 +25,7 @@ namespace bio::service::fsp {
             }
 
             inline Result OpenSdCardFileSystem(mem::SharedObject<FileSystem> &out_fs) {
-                return this->session.SendRequestCommand<18>(ipc::client::OutSessionObject<0, FileSystem>(out_fs));
+                return this->session.SendRequestCommand<18>(ipc::client::OutSessionObject(out_fs));
             }
 
     };

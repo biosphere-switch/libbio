@@ -17,7 +17,6 @@ namespace bio::ipc::server {
     };
 
     using NewServerFunction = Result(*)(Server*&);
-
     using DeleteServerFunction = void(*)(Server*);
 
     struct ServerContainer {
@@ -28,6 +27,7 @@ namespace bio::ipc::server {
         u32 forward_handle;
         bool is_mitm_service;
         service::sm::ServiceName service_name;
+        u16 pointer_buffer_size;
 
         inline constexpr bool IsMitmService() {
             return this->is_mitm_service;
@@ -100,6 +100,7 @@ namespace bio::ipc::server {
                 new_server.handle = { session_handle, WaitHandleType::Session };
                 new_server.service_name = service::sm::InvalidServiceName;
                 new_server.forward_handle = forward_handle;
+                new_server.pointer_buffer_size = base_server.pointer_buffer_size;
                 this->servers.Push(new_server);
                 return ResultSuccess;
             }
@@ -207,16 +208,20 @@ namespace bio::ipc::server {
                         break;
                     }
                     case ipc::CommandType::Control: {
-                        u32 rq_id;
+                        ControlRequestId rq_id;
                         auto rc = ReadControlCommandFromIpcBuffer(ctx, rq_id);
                         if(rc.IsSuccess()) {
-                            switch(static_cast<ControlRequestId>(rq_id)) {
+                            switch(rq_id) {
                                 case ControlRequestId::CloneCurrentObject:
                                 case ControlRequestId::CloneCurrentObjectEx: {
                                     // Note: the *Ex command just sends an unused u32 in raw data, so we'll ignore it.
                                     u32 cloned_handle;
                                     rc = this->CloneCurrentObjectImpl(server, ctx, cloned_handle);
                                     Server::RequestCommandEnd(ctx, rc, OutHandle<HandleMode::Move>(cloned_handle));
+                                    break;
+                                }
+                                case ControlRequestId::QueryPointerBufferSize: {
+                                    Server::RequestCommandEnd(ctx, rc, Out(server.pointer_buffer_size));
                                     break;
                                 }
                                 default: {
@@ -294,7 +299,7 @@ namespace bio::ipc::server {
             }
             
             template<typename S>
-            static inline Result CreateSession(ServerContainer &out_server, u32 session_handle) {
+            static inline Result CreateSession(ServerContainer &out_server, u32 session_handle, u16 pointer_buffer_size) {
                 Server *server;
                 BIO_RES_TRY(NewServer<S>(server));
 
@@ -305,11 +310,12 @@ namespace bio::ipc::server {
                 out_server.forward_handle = InvalidHandle;
                 out_server.is_mitm_service = false;
                 out_server.service_name = service::sm::InvalidServiceName;
+                out_server.pointer_buffer_size = pointer_buffer_size;
                 return ResultSuccess;
             }
 
             template<typename S>
-            static inline Result CreateServer(ServerContainer &out_server, u32 port_handle, service::sm::ServiceName service_name, bool is_mitm_service) {
+            static inline Result CreateServer(ServerContainer &out_server, u32 port_handle, service::sm::ServiceName service_name, bool is_mitm_service, u16 pointer_buffer_size) {
                 Server *server;
                 BIO_RES_TRY(NewServer<S>(server));
 
@@ -320,6 +326,7 @@ namespace bio::ipc::server {
                 out_server.forward_handle = InvalidHandle;
                 out_server.is_mitm_service = is_mitm_service;
                 out_server.service_name = service_name;
+                out_server.pointer_buffer_size = pointer_buffer_size;
                 return ResultSuccess;
             }
 
@@ -343,6 +350,7 @@ namespace bio::ipc::server {
             util::LinkedList<ServerObject*> server_objects;
             util::SizedArray<u32, os::MaxWaitObjectCount> wait_handles;
             util::LinkedList<os::Thread> process_threads;
+            u16 pointer_buffer_size;
 
             template<ShouldMitmFunction ShouldMitmFn>
             Result RegisterMitmQuerySession(u32 mitm_query_handle) {
@@ -368,6 +376,9 @@ namespace bio::ipc::server {
             }
 
         public:
+            constexpr ServerManager() : server_objects(), wait_handles(), process_threads(), pointer_buffer_size(0) {}
+            constexpr ServerManager(u16 pointer_buffer_size) : server_objects(), wait_handles(), process_threads(), pointer_buffer_size(pointer_buffer_size) {}
+
             template<typename S>
             Result RegisterServerContainer(ServerContainer &server) {
                 static_assert(IsServer<S>, "Must be a Server type");
@@ -384,7 +395,7 @@ namespace bio::ipc::server {
                 static_assert(IsServer<S>, "Must be a Server type");
 
                 ServerContainer server;
-                BIO_RES_TRY(ServerObject::CreateServer<S>(server, port_handle, service_name, is_mitm_service));
+                BIO_RES_TRY(ServerObject::CreateServer<S>(server, port_handle, service_name, is_mitm_service, this->pointer_buffer_size));
                 BIO_RES_TRY(this->RegisterServerContainer<S>(server));
 
                 return ResultSuccess;
@@ -395,7 +406,7 @@ namespace bio::ipc::server {
                 static_assert(IsServer<S>, "Must be a Server type");
 
                 ServerContainer server;
-                BIO_RES_TRY(ServerObject::CreateSession<S>(server, session_handle));
+                BIO_RES_TRY(ServerObject::CreateSession<S>(server, session_handle, this->pointer_buffer_size));
                 BIO_RES_TRY(this->RegisterServerContainer<S>(server));
 
                 return ResultSuccess;

@@ -64,11 +64,11 @@ namespace bio::service::sm {
             }
 
             inline Result GetService(ServiceName name, ipc::client::Session &out_session) {
-                return this->session.SendRequestCommand<1>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutSession<0>(out_session));
+                return this->session.SendRequestCommand<1>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutSession(out_session));
             }
 
             inline Result RegisterService(ServiceName name, bool is_light, i32 max_sessions, u32 &out_handle) {
-                return this->session.SendRequestCommand<2>(ipc::client::In<u64>(name.GetValue()), ipc::client::In<bool>(is_light), ipc::client::In<i32>(max_sessions), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_handle));
+                return this->session.SendRequestCommand<2>(ipc::client::In<u64>(name.GetValue()), ipc::client::In<bool>(is_light), ipc::client::In<i32>(max_sessions), ipc::client::OutHandle<ipc::HandleMode::Move>(out_handle));
             }
 
             inline Result AtmosphereHasService(ServiceName name, bool &out_has) {
@@ -76,7 +76,7 @@ namespace bio::service::sm {
             }
 
             inline Result AtmosphereInstallMitm(ServiceName name, u32 &out_mitm_handle, u32 &out_query_handle) {
-                return this->session.SendRequestCommand<65000>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_mitm_handle), ipc::client::OutHandle<ipc::HandleMode::Move, 1>(out_query_handle));
+                return this->session.SendRequestCommand<65000>(ipc::client::In<u64>(name.GetValue()), ipc::client::OutHandle<ipc::HandleMode::Move>(out_mitm_handle), ipc::client::OutHandle<ipc::HandleMode::Move>(out_query_handle));
             }
 
             inline Result AtmosphereUninstallMitm(ServiceName name) {
@@ -84,7 +84,7 @@ namespace bio::service::sm {
             }
 
             inline Result AtmosphereAcknowledgeMitmSession(ServiceName name, MitmProcessInfo &out_info, u32 &out_handle) {
-                return this->session.SendRequestCommand<65003>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<MitmProcessInfo>(out_info), ipc::client::OutHandle<ipc::HandleMode::Move, 0>(out_handle));
+                return this->session.SendRequestCommand<65003>(ipc::client::In<u64>(name.GetValue()), ipc::client::Out<MitmProcessInfo>(out_info), ipc::client::OutHandle<ipc::HandleMode::Move>(out_handle));
             }
 
     };

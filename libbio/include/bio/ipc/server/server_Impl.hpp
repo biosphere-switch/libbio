@@ -172,7 +172,7 @@ namespace bio::ipc::server {
 
     // Control
 
-    inline Result ReadControlCommandFromIpcBuffer(CommandContext &ctx, u32 &out_request_id) {
+    inline Result ReadControlCommandFromIpcBuffer(CommandContext &ctx, ControlRequestId &out_request_id) {
         auto ipc_buf = GetIpcBuffer();
         auto data_offset = GetAlignedDataOffset(ctx.in.data_words_offset, ipc_buf);
 
@@ -180,7 +180,7 @@ namespace bio::ipc::server {
         data_offset += sizeof(DataHeader);
 
         BIO_RET_UNLESS(header->magic == DataInHeaderMagic, cmif::result::ResultInvalidInputHeader);
-        out_request_id = header->value;
+        out_request_id = static_cast<ControlRequestId>(header->value);
 
         ctx.in.data_offset = data_offset;
         ctx.in.data_size -= (16 + sizeof(DataHeader));

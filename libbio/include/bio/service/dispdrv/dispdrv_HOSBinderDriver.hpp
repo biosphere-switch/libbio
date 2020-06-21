@@ -27,7 +27,7 @@ namespace bio::service::dispdrv {
             }
 
             inline Result GetNativeHandle(i32 binder_handle, u32 unk, u32 &out_handle) {
-                return this->session.SendRequestCommand<2>(ipc::client::In<i32>(binder_handle), ipc::client::In<u32>(unk), ipc::client::OutHandle<ipc::HandleMode::Copy, 0>(out_handle));
+                return this->session.SendRequestCommand<2>(ipc::client::In<i32>(binder_handle), ipc::client::In<u32>(unk), ipc::client::OutHandle<ipc::HandleMode::Copy>(out_handle));
             }
 
             inline Result TransactParcelAuto(i32 binder_handle, ParcelTransactionId transaction_id, u32 flags, void *in_parcel, u64 in_parcel_size, void *out_parcel, u64 out_parcel_size) {
